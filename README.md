@@ -435,7 +435,7 @@ See `ROADMAP.md` for the full week-by-week plan. Key items:
 ```
 README.md                              ← this file
 ROADMAP.md                             ← full week-by-week dev plan
-prototype/
+prototype/                             ← HTML design reference
   index.html                           ← entry point — open in any browser
   scripts/
     data.jsx                           ← song catalog + hints + palettes
@@ -445,7 +445,35 @@ prototype/
   frames/
     ios-frame.jsx                      ← iOS device chrome (reference only)
     tweaks-panel.jsx                   ← in-prototype variant switcher
+app/                                   ← React Native + Expo implementation
+  App.tsx                              ← root component
+  src/
+    screens/PreviewPocScreen.tsx       ← Phase 0: iTunes preview playback POC
+    services/itunesApi.ts              ← iTunes Search API client
+    theme/tokens.ts                    ← design tokens (colors, radius, spacing)
 ```
+
+---
+
+## Running the App
+
+Phase 0 (the iTunes preview-URL POC) is wired in `app/`. Stack: Expo SDK 56,
+React Native 0.85, expo-audio (replaces deprecated expo-av).
+
+```bash
+cd app
+npm install                # one-time
+npm start                  # opens Expo dev server + QR code
+```
+
+Then either:
+- Scan the QR code with **Expo Go** on iOS/Android (easiest on Windows)
+- Press `a` for Android emulator, `w` for web (audio playback flakier on web)
+
+The POC screen searches the iTunes Store for Bollywood songs (default term:
+"tum hi ho"), lists matches with artwork, and plays the 30-second `previewUrl`
+through `expo-audio`. This single test validates the free-tier licensing
+path before any catalog work begins.
 
 ---
 
