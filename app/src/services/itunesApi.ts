@@ -2,9 +2,12 @@ export type ITunesTrack = {
   trackId: number;
   trackName: string;
   artistName: string;
+  collectionId?: number;
   collectionName?: string;
   previewUrl?: string;
   artworkUrl100?: string;
+  trackViewUrl?: string;
+  collectionViewUrl?: string;
   releaseDate?: string;
   primaryGenreName?: string;
   trackTimeMillis?: number;
