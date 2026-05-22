@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
   Image,
+  Keyboard,
   Pressable,
   StyleSheet,
   Text,
@@ -17,6 +18,9 @@ import { colors, radius, spacing } from '../theme/tokens';
 const SILENT_WAV =
   'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=';
 
+const DEBOUNCE_MS = 350;
+const SEARCH_LIMIT = 25;
+
 export function PreviewPocScreen() {
   const [term, setTerm] = useState('tum hi ho');
   const [tracks, setTracks] = useState<ITunesTrack[]>([]);
@@ -27,27 +31,37 @@ export function PreviewPocScreen() {
   const player = useAudioPlayer(SILENT_WAV);
   const status = useAudioPlayerStatus(player);
 
-  const onSearch = async () => {
+  const reqIdRef = useRef(0);
+
+  const runSearch = useCallback(async (q: string) => {
+    const trimmed = q.trim();
+    if (trimmed.length === 0) {
+      setTracks([]);
+      setError(null);
+      setLoading(false);
+      return;
+    }
+    const id = ++reqIdRef.current;
     setLoading(true);
     setError(null);
     try {
-      const results = await searchSongs(term);
+      const results = await searchSongs(trimmed, { limit: SEARCH_LIMIT });
+      if (id !== reqIdRef.current) return;
       setTracks(results);
-      if (results.length === 0) {
-        setError('No results with preview URLs.');
-      }
+      if (results.length === 0) setError('No results with preview URLs.');
     } catch (e: unknown) {
+      if (id !== reqIdRef.current) return;
       setError(e instanceof Error ? e.message : 'Unknown error');
       setTracks([]);
     } finally {
-      setLoading(false);
+      if (id === reqIdRef.current) setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    onSearch();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    const t = setTimeout(() => runSearch(term), DEBOUNCE_MS);
+    return () => clearTimeout(t);
+  }, [term, runSearch]);
 
   const playTrack = (track: ITunesTrack) => {
     if (!track.previewUrl) return;
@@ -63,74 +77,101 @@ export function PreviewPocScreen() {
     player.play();
   };
 
+  const clearSearch = () => {
+    setTerm('');
+    setTracks([]);
+    setError(null);
+  };
+
+  const progress =
+    status.duration && status.duration > 0
+      ? Math.min(1, status.currentTime / status.duration)
+      : 0;
+
   return (
     <View style={styles.root}>
       <Text style={styles.label}>PHASE 0 · PREVIEW POC</Text>
-      <Text style={styles.title}>iTunes preview playback.</Text>
+      <Text style={styles.title}>Search & play.</Text>
       <Text style={styles.sub}>
-        Validates the free-tier path: search → 30s previewUrl → expo-audio.
+        Type any song — Bollywood, Hindi, anything. Results auto-update.
       </Text>
 
-      <View style={styles.searchRow}>
+      <View style={styles.inputWrap}>
+        <Text style={styles.inputIcon}>🔍</Text>
         <TextInput
           style={styles.input}
           value={term}
           onChangeText={setTerm}
-          placeholder="Search a Bollywood song"
+          placeholder="Search a song"
           placeholderTextColor={colors.inkFaint}
-          onSubmitEditing={onSearch}
+          onSubmitEditing={() => {
+            Keyboard.dismiss();
+            runSearch(term);
+          }}
           returnKeyType="search"
           autoCapitalize="none"
           autoCorrect={false}
         />
-        <Pressable
-          style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
-          onPress={onSearch}
-          disabled={loading}>
-          <Text style={styles.buttonText}>{loading ? '…' : 'Search'}</Text>
-        </Pressable>
+        {term.length > 0 ? (
+          <Pressable hitSlop={12} onPress={clearSearch} style={styles.clearBtn}>
+            <Text style={styles.clearText}>✕</Text>
+          </Pressable>
+        ) : null}
+      </View>
+
+      <View style={styles.metaRow}>
+        <Text style={styles.metaText}>
+          {loading ? 'Searching…' : `${tracks.length} result${tracks.length === 1 ? '' : 's'}`}
+        </Text>
+        {loading ? <ActivityIndicator size="small" color={colors.gold} /> : null}
       </View>
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
-      {loading ? (
-        <ActivityIndicator color={colors.gold} style={{ marginTop: 24 }} />
-      ) : (
-        <FlatList
-          data={tracks}
-          keyExtractor={(t) => String(t.trackId)}
-          contentContainerStyle={{ paddingBottom: 60 }}
-          ItemSeparatorComponent={() => <View style={styles.sep} />}
-          renderItem={({ item }) => {
-            const isActive = item.trackId === activeId;
-            const isPlaying = isActive && status.playing;
-            return (
-              <Pressable
-                style={[styles.row, isActive && styles.rowActive]}
-                onPress={() => playTrack(item)}>
-                {item.artworkUrl100 ? (
-                  <Image source={{ uri: item.artworkUrl100 }} style={styles.art} />
-                ) : (
-                  <View style={[styles.art, styles.artFallback]} />
-                )}
-                <View style={styles.rowText}>
-                  <Text style={styles.rowTitle} numberOfLines={1}>
-                    {item.trackName}
-                  </Text>
-                  <Text style={styles.rowSub} numberOfLines={1}>
-                    {item.artistName}
-                    {item.collectionName ? ` · ${item.collectionName}` : ''}
-                  </Text>
-                </View>
-                <Text style={styles.play}>{isPlaying ? '❚❚' : '▶'}</Text>
-              </Pressable>
-            );
-          }}
-          ListEmptyComponent={
-            !error ? <Text style={styles.empty}>No tracks yet.</Text> : null
-          }
-        />
-      )}
+      <FlatList
+        data={tracks}
+        keyExtractor={(t) => String(t.trackId)}
+        contentContainerStyle={{ paddingBottom: 96 }}
+        keyboardShouldPersistTaps="handled"
+        ItemSeparatorComponent={() => <View style={styles.sep} />}
+        renderItem={({ item }) => {
+          const isActive = item.trackId === activeId;
+          const isPlaying = isActive && status.playing;
+          return (
+            <Pressable
+              style={[styles.row, isActive && styles.rowActive]}
+              onPress={() => playTrack(item)}>
+              {item.artworkUrl100 ? (
+                <Image source={{ uri: item.artworkUrl100 }} style={styles.art} />
+              ) : (
+                <View style={[styles.art, styles.artFallback]} />
+              )}
+              <View style={styles.rowText}>
+                <Text style={styles.rowTitle} numberOfLines={1}>
+                  {item.trackName}
+                </Text>
+                <Text style={styles.rowSub} numberOfLines={1}>
+                  {item.artistName}
+                  {item.collectionName ? ` · ${item.collectionName}` : ''}
+                </Text>
+                {isActive ? (
+                  <View style={styles.progressTrack}>
+                    <View
+                      style={[styles.progressFill, { width: `${progress * 100}%` }]}
+                    />
+                  </View>
+                ) : null}
+              </View>
+              <Text style={styles.play}>{isPlaying ? '❚❚' : '▶'}</Text>
+            </Pressable>
+          );
+        }}
+        ListEmptyComponent={
+          !loading && !error && term.trim().length > 0 ? (
+            <Text style={styles.empty}>No tracks yet.</Text>
+          ) : null
+        }
+      />
 
       {activeId !== null ? (
         <View style={styles.nowPlaying}>
@@ -176,39 +217,58 @@ const styles = StyleSheet.create({
     marginTop: 8,
     lineHeight: 20,
   },
-  searchRow: {
+  inputWrap: {
     flexDirection: 'row',
+    alignItems: 'center',
     marginTop: 22,
-    gap: 10,
+    backgroundColor: colors.bgCard,
+    borderRadius: radius.button,
+    paddingHorizontal: 14,
+    paddingVertical: 4,
+  },
+  inputIcon: {
+    fontSize: 16,
+    marginRight: 8,
+    opacity: 0.7,
   },
   input: {
     flex: 1,
-    backgroundColor: colors.bgCard,
     color: colors.ink,
-    borderRadius: radius.button,
-    paddingHorizontal: 16,
     paddingVertical: 14,
-    fontSize: 15,
+    fontSize: 16,
   },
-  button: {
-    backgroundColor: colors.filmi,
-    borderRadius: radius.button,
-    paddingHorizontal: 20,
+  clearBtn: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: colors.line,
+    alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: colors.filmi,
-    shadowOpacity: 0.4,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: 8 },
   },
-  buttonPressed: { opacity: 0.85 },
-  buttonText: {
+  clearText: {
     color: colors.ink,
+    fontSize: 14,
+    lineHeight: 16,
     fontWeight: '700',
-    fontSize: 15,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 14,
+    marginBottom: 10,
+    minHeight: 18,
+  },
+  metaText: {
+    color: colors.inkDim,
+    fontSize: 11,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
   },
   error: {
     color: colors.danger,
-    marginTop: 14,
+    marginTop: 4,
+    marginBottom: 8,
     fontSize: 13,
   },
   empty: {
@@ -231,8 +291,8 @@ const styles = StyleSheet.create({
     borderColor: colors.gold,
   },
   art: {
-    width: 52,
-    height: 52,
+    width: 56,
+    height: 56,
     borderRadius: 10,
   },
   artFallback: {
@@ -249,10 +309,21 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 2,
   },
+  progressTrack: {
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: colors.line,
+    marginTop: 8,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: 3,
+    backgroundColor: colors.gold,
+  },
   play: {
     color: colors.gold,
-    fontSize: 18,
-    paddingHorizontal: 6,
+    fontSize: 20,
+    paddingHorizontal: 8,
   },
   nowPlaying: {
     position: 'absolute',
