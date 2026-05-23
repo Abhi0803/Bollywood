@@ -50,7 +50,11 @@ function shuffle<T>(arr: readonly T[]): T[] {
   return out;
 }
 
-function applyFilters(songs: readonly Song[], filters: Filters): Song[] {
+function applyFilters(
+  songs: readonly Song[],
+  filters: Filters,
+  blockedIds: readonly string[] = [],
+): Song[] {
   let out: Song[] = [...songs];
   if (filters.eras.length > 0) {
     out = out.filter((s) => filters.eras.includes(s.era));
@@ -61,6 +65,11 @@ function applyFilters(songs: readonly Song[], filters: Filters): Song[] {
   // Easy mode: hard-filter to tier-1 only (iconic songs only)
   if (filters.difficulty === 'easy') {
     out = out.filter((s) => s.popularity === 1);
+  }
+  // Per-device blocklist — never surface these
+  if (blockedIds.length > 0) {
+    const blocked = new Set(blockedIds);
+    out = out.filter((s) => !blocked.has(s.id));
   }
   return out;
 }
@@ -96,13 +105,20 @@ function groupByMovie(songs: readonly Song[]): Map<string, Song[]> {
 export type PickArgs = {
   filters: Filters;
   recentlyPlayedIds: string[];
+  blockedIds?: string[];
   count: number;
 };
 
-export function pickSongs({ filters, recentlyPlayedIds, count }: PickArgs): Song[] {
-  // 1. Filter to era/mood
-  let filtered = applyFilters(SONGS, filters);
-  if (filtered.length === 0) filtered = [...SONGS];
+export function pickSongs({ filters, recentlyPlayedIds, blockedIds = [], count }: PickArgs): Song[] {
+  // 1. Filter to era/mood + drop blocklist
+  let filtered = applyFilters(SONGS, filters, blockedIds);
+  if (filtered.length === 0) {
+    // Filters too narrow OR blocklist swallowed the eligible pool.
+    // Last-resort fallback: use full catalog minus blocklist.
+    const blocked = new Set(blockedIds);
+    filtered = SONGS.filter((s) => !blocked.has(s.id));
+    if (filtered.length === 0) filtered = [...SONGS];
+  }
 
   // 2. Split fresh (not recent) vs stale (recent); prefer fresh
   const recentSet = new Set(recentlyPlayedIds);
@@ -141,6 +157,7 @@ export function pickSongs({ filters, recentlyPlayedIds, count }: PickArgs): Song
 export type ReplaceArgs = {
   filters: Filters;
   recentlyPlayedIds: string[];
+  blockedIds?: string[];
   excludeSongIds: string[];
   // Movies already in the deck — prefer NOT to repeat unless forced.
   // Helps the cancel-round flow stay diverse.
@@ -150,13 +167,17 @@ export type ReplaceArgs = {
 export function pickReplacement({
   filters,
   recentlyPlayedIds,
+  blockedIds = [],
   excludeSongIds,
   excludeMovies = [],
 }: ReplaceArgs): Song | null {
-  // 1. Filter, exclude current deck songs
-  let pool = applyFilters(SONGS, filters).filter((s) => !excludeSongIds.includes(s.id));
+  // 1. Filter, drop blocked + current deck
+  let pool = applyFilters(SONGS, filters, blockedIds).filter(
+    (s) => !excludeSongIds.includes(s.id),
+  );
   if (pool.length === 0) {
-    pool = SONGS.filter((s) => !excludeSongIds.includes(s.id));
+    const blocked = new Set(blockedIds);
+    pool = SONGS.filter((s) => !excludeSongIds.includes(s.id) && !blocked.has(s.id));
   }
   if (pool.length === 0) return null;
 

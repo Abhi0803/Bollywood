@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { HINTS, SONGS, type Song } from '../data/catalog';
 import { DEFAULT_TEAMS_BY_COUNT, type Team } from '../data/teams';
+import { addToBlocklist, loadBlocklist } from './blocklist';
 import { loadRecent, recentIds, recordPlay } from './history';
 import { loadPreferences, savePreferences } from './preferences';
 import { pickReplacement, pickSongs } from '../services/songPicker';
@@ -61,6 +62,8 @@ export type GameActions = {
   finishRoundMiss(): void;
   cancelRound(): void;
   quitGame(): void;
+  blockCurrentSong(): void;
+  blockSongById(id: string): void;
   nextRound(): void;
   revealHint(key: HintKey): void;
   setShowHints(v: boolean): void;
@@ -89,24 +92,29 @@ export function useGameState(): { state: GameState; actions: GameActions } {
   // Recently-played IDs, persisted to disk. Held in a ref because the picker
   // reads it imperatively from inside other callbacks.
   const recentIdsRef = useRef<string[]>([]);
+  // Blocklist of song IDs the user marked "never play again".
+  const blockedIdsRef = useRef<string[]>([]);
   // Track whether prefs have loaded — only after this do we start saving on
   // change, so the initial render's default values don't overwrite saved ones.
   const prefsLoadedRef = useRef(false);
 
-  // Load persisted history + preferences on first mount.
+  // Load persisted history + preferences + blocklist on first mount.
   useEffect(() => {
     let cancelled = false;
-    Promise.all([loadRecent(), loadPreferences()]).then(([records, prefs]) => {
-      if (cancelled) return;
-      recentIdsRef.current = recentIds(records);
-      if (prefs.teams && prefs.teams.length >= 2) {
-        setTeamsState(prefs.teams.map((t) => ({ ...t, score: 0 })));
-      }
-      if (prefs.filters) {
-        setFiltersState({ ...DEFAULT_FILTERS, ...prefs.filters });
-      }
-      prefsLoadedRef.current = true;
-    });
+    Promise.all([loadRecent(), loadPreferences(), loadBlocklist()]).then(
+      ([records, prefs, blocked]) => {
+        if (cancelled) return;
+        recentIdsRef.current = recentIds(records);
+        blockedIdsRef.current = blocked;
+        if (prefs.teams && prefs.teams.length >= 2) {
+          setTeamsState(prefs.teams.map((t) => ({ ...t, score: 0 })));
+        }
+        if (prefs.filters) {
+          setFiltersState({ ...DEFAULT_FILTERS, ...prefs.filters });
+        }
+        prefsLoadedRef.current = true;
+      },
+    );
     return () => {
       cancelled = true;
     };
@@ -150,6 +158,7 @@ export function useGameState(): { state: GameState; actions: GameActions } {
     const deck = pickSongs({
       filters,
       recentlyPlayedIds: recentIdsRef.current,
+      blockedIds: blockedIdsRef.current,
       count: filters.rounds,
     });
     setSongDeck(deck.length > 0 ? deck : SONGS.slice(0, filters.rounds));
@@ -249,6 +258,26 @@ export function useGameState(): { state: GameState; actions: GameActions } {
     setScreen('reveal');
   }, []);
 
+  // Block a song by ID — never surface it again on this device.
+  // Updates the persisted blocklist + the in-memory ref the picker reads.
+  const blockSongById = useCallback(async (id: string) => {
+    const next = await addToBlocklist(id);
+    blockedIdsRef.current = next;
+  }, []);
+
+  // Block the current song AND treat the rest like a cancel-round (reveal
+  // the burned song, replace under same round, no score). Use when a song
+  // is in-game and the host decides "this one's no good for the game."
+  const blockCurrentSong = useCallback(() => {
+    const song = songDeck[songIdx];
+    if (song) void blockSongById(song.id);
+    setLastWin(null);
+    setLastWasCancelled(true);
+    setBuzzed(null);
+    setShowHints(false);
+    setScreen('reveal');
+  }, [blockSongById, songDeck, songIdx]);
+
   // Continue after a Reveal screen — branches on whether this was a normal
   // round finish (advance to next round) or a cancellation (swap in a fresh
   // song for the same round and replay).
@@ -258,6 +287,7 @@ export function useGameState(): { state: GameState; actions: GameActions } {
       const replacement = pickReplacement({
         filters,
         recentlyPlayedIds: recentIdsRef.current,
+        blockedIds: blockedIdsRef.current,
         excludeSongIds: songDeck.map((s) => s.id),
         excludeMovies: currentMovie ? [currentMovie] : [],
       });
@@ -346,6 +376,8 @@ export function useGameState(): { state: GameState; actions: GameActions } {
       finishRoundMiss,
       cancelRound,
       quitGame,
+      blockCurrentSong,
+      blockSongById,
       nextRound,
       revealHint,
       setShowHints,

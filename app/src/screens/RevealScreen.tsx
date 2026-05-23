@@ -15,6 +15,7 @@ type Props = {
   itunesTrackId?: number;
   onNext: () => void;
   onQuit: () => void;
+  onBlock: () => void;
   isLast: boolean;
   wasCancelled: boolean;
 };
@@ -26,6 +27,7 @@ export function RevealScreen({
   itunesTrackId,
   onNext,
   onQuit,
+  onBlock,
   isLast,
   wasCancelled,
 }: Props) {
@@ -41,6 +43,16 @@ export function RevealScreen({
       [
         { text: 'Keep playing', style: 'cancel' },
         { text: 'End game', style: 'destructive', onPress: onQuit },
+      ],
+    );
+
+  const confirmBlock = () =>
+    Alert.alert(
+      `Block "${song.song}"?`,
+      'This song will never play on this device again.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Block it', style: 'destructive', onPress: onBlock },
       ],
     );
 
@@ -110,6 +122,12 @@ export function RevealScreen({
         variant="ghost"
         onPress={confirmQuit}
         style={{ marginTop: 10 }}
+      />
+      <FilmiButton
+        label="🚫 Never play this song again"
+        variant="danger"
+        onPress={confirmBlock}
+        style={{ marginTop: 4 }}
       />
     </ScreenLayout>
   );

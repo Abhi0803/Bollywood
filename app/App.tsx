@@ -129,6 +129,7 @@ export default function App() {
               onCancel={a.cancelRound}
               onReplay={replay}
               onQuit={a.quitGame}
+              onBlock={a.blockCurrentSong}
             />
             {s.showHints ? (
               <HintsOverlay
@@ -160,6 +161,7 @@ export default function App() {
             wasCancelled={s.lastWasCancelled}
             onNext={a.nextRound}
             onQuit={a.quitGame}
+            onBlock={() => a.blockSongById(currentSong!.id)}
           />
         );
       case 'summary':

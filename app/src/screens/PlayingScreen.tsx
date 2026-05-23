@@ -21,6 +21,7 @@ type Props = {
   onCancel: () => void;
   onReplay: () => void;
   onQuit: () => void;
+  onBlock: () => void;
 };
 
 export function PlayingScreen({
@@ -38,6 +39,7 @@ export function PlayingScreen({
   onCancel,
   onReplay,
   onQuit,
+  onBlock,
 }: Props) {
   const confirmQuit = () =>
     Alert.alert(
@@ -46,6 +48,16 @@ export function PlayingScreen({
       [
         { text: 'Keep playing', style: 'cancel' },
         { text: 'End game', style: 'destructive', onPress: onQuit },
+      ],
+    );
+
+  const confirmBlock = () =>
+    Alert.alert(
+      'Remove this song?',
+      'It will never play on this device again. The round restarts with a fresh song; no score change.',
+      [
+        { text: 'Nope', style: 'cancel' },
+        { text: 'Remove it', style: 'destructive', onPress: onBlock },
       ],
     );
   const pct = maxTime > 0 ? Math.max(0, Math.min(1, timeLeft / maxTime)) : 0;
@@ -98,6 +110,9 @@ export function PlayingScreen({
             style={{ flex: 1 }}
           />
         ) : null}
+        <Pressable onPress={confirmBlock} style={styles.block} hitSlop={8}>
+          <Text style={styles.blockText}>🚫 Bad song</Text>
+        </Pressable>
         <Pressable onPress={onCancel} style={styles.cancel} hitSlop={8}>
           <Text style={styles.cancelText}>↺ Cancel</Text>
         </Pressable>
@@ -223,9 +238,11 @@ const styles = StyleSheet.create({
   timerFill: { height: 6, borderRadius: 3 },
   waveform: { color: colors.gold, fontSize: 26, letterSpacing: 6, marginTop: 16 },
   actionsRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 18 },
-  cancel: { paddingHorizontal: 10, justifyContent: 'center' },
-  cancelText: { color: colors.gold, fontSize: 12, fontWeight: '700', letterSpacing: 0.5 },
-  skip: { paddingHorizontal: 10, justifyContent: 'center' },
+  cancel: { paddingHorizontal: 8, justifyContent: 'center' },
+  cancelText: { color: colors.gold, fontSize: 12, fontWeight: '700', letterSpacing: 0.4 },
+  block: { paddingHorizontal: 8, justifyContent: 'center' },
+  blockText: { color: colors.danger, fontSize: 12, fontWeight: '700', letterSpacing: 0.4 },
+  skip: { paddingHorizontal: 8, justifyContent: 'center' },
   skipText: { color: colors.inkFaint, fontSize: 13, fontWeight: '600' },
   buzzRow: { marginTop: 14, gap: 10 },
   buzz: {
