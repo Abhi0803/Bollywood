@@ -28,12 +28,15 @@
 //   shuffle deck before returning
 
 import { SONGS, type Popularity, type Song } from '../data/catalog';
-import type { Filters } from '../state/types';
+import type { Difficulty, Filters } from '../state/types';
 
-const TIER_WEIGHTS: Record<Popularity, number> = {
-  1: 2,
-  2: 1.5,
-  3: 1,
+// Per-difficulty popularity weights. Easy filters to tier-1 only (no tiers
+// 2 or 3 in the pool at all); normal and hard work on the full pool with
+// different weight skews.
+const TIER_WEIGHTS: Record<Difficulty, Record<Popularity, number>> = {
+  easy: { 1: 1, 2: 0, 3: 0 },   // tier-1 only (the filter does the work)
+  normal: { 1: 2, 2: 1.5, 3: 1 }, // iconic preferred, others surface
+  hard: { 1: 1, 2: 1, 3: 1 },   // uniform — deep cuts as likely as hits
 };
 
 function shuffle<T>(arr: readonly T[]): T[] {
@@ -55,16 +58,26 @@ function applyFilters(songs: readonly Song[], filters: Filters): Song[] {
   if (filters.moods.length > 0) {
     out = out.filter((s) => filters.moods.includes(s.mood));
   }
+  // Easy mode: hard-filter to tier-1 only (iconic songs only)
+  if (filters.difficulty === 'easy') {
+    out = out.filter((s) => s.popularity === 1);
+  }
   return out;
 }
 
-function weightedPickOne<T extends Song>(songs: readonly T[]): T {
+function weightedPickOne<T extends Song>(songs: readonly T[], difficulty: Difficulty): T {
   if (songs.length === 0) throw new Error('weightedPickOne called with empty list');
   if (songs.length === 1) return songs[0];
-  const totalWeight = songs.reduce((acc, s) => acc + TIER_WEIGHTS[s.popularity], 0);
+  const weights = TIER_WEIGHTS[difficulty];
+  const totalWeight = songs.reduce((acc, s) => acc + weights[s.popularity], 0);
+  if (totalWeight <= 0) {
+    // All songs have weight zero (shouldn't happen if applyFilters did its job);
+    // fall back to uniform pick.
+    return songs[Math.floor(Math.random() * songs.length)];
+  }
   let r = Math.random() * totalWeight;
   for (const s of songs) {
-    r -= TIER_WEIGHTS[s.popularity];
+    r -= weights[s.popularity];
     if (r <= 0) return s;
   }
   return songs[songs.length - 1];
@@ -107,7 +120,7 @@ export function pickSongs({ filters, recentlyPlayedIds, count }: PickArgs): Song
     if (deck.length >= count) break;
     const songsInMovie = byMovie.get(movie);
     if (!songsInMovie || songsInMovie.length === 0) continue;
-    deck.push(weightedPickOne(songsInMovie));
+    deck.push(weightedPickOne(songsInMovie, filters.difficulty));
   }
 
   // 5. Phase 2: if not enough unique movies, allow second songs from
@@ -157,5 +170,5 @@ export function pickReplacement({
   const diverseMoviePool = fromFresh.filter((s) => !excludeMovieSet.has(s.movie));
   const candidates = diverseMoviePool.length > 0 ? diverseMoviePool : fromFresh;
 
-  return weightedPickOne(candidates);
+  return weightedPickOne(candidates, filters.difficulty);
 }

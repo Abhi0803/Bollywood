@@ -4,7 +4,7 @@ import { Chip } from '../components/Chip';
 import { FilmiButton } from '../components/FilmiButton';
 import { ScreenLayout } from '../components/ScreenLayout';
 import { ALL_ERAS, ALL_MOODS, type Era, type Mood } from '../data/catalog';
-import type { Filters } from '../state/types';
+import type { Difficulty, Filters } from '../state/types';
 import { colors, radius } from '../theme/tokens';
 
 type Props = {
@@ -16,6 +16,11 @@ type Props = {
 
 const ROUND_OPTIONS = [5, 7, 10, 15];
 const TIMER_OPTIONS = [10, 20, 30];
+const DIFFICULTY_OPTIONS: { value: Difficulty; label: string; hint: string }[] = [
+  { value: 'easy', label: 'Easy', hint: 'Iconic hits only' },
+  { value: 'normal', label: 'Normal', hint: 'Mix of hits + lesser-known' },
+  { value: 'hard', label: 'Hard', hint: 'Deep cuts allowed' },
+];
 
 export function FiltersScreen({ filters, setFilters, onStart, onBack }: Props) {
   const toggle = <T extends string>(arr: T[], v: T): T[] =>
@@ -74,6 +79,27 @@ export function FiltersScreen({ filters, setFilters, onStart, onBack }: Props) {
         ))}
       </View>
 
+      <Text style={styles.section}>DIFFICULTY</Text>
+      <View style={styles.segmented}>
+        {DIFFICULTY_OPTIONS.map((opt) => (
+          <Pressable
+            key={opt.value}
+            onPress={() => setFilters((f) => ({ ...f, difficulty: opt.value }))}
+            style={[styles.seg, filters.difficulty === opt.value && styles.segActive]}>
+            <Text
+              style={[
+                styles.segText,
+                filters.difficulty === opt.value && styles.segTextActive,
+              ]}>
+              {opt.label}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+      <Text style={styles.difficultyHint}>
+        {DIFFICULTY_OPTIONS.find((o) => o.value === filters.difficulty)?.hint}
+      </Text>
+
       <View style={styles.hintsRow}>
         <View style={{ flex: 1 }}>
           <Text style={styles.hintsTitle}>Hints</Text>
@@ -124,4 +150,10 @@ const styles = StyleSheet.create({
   },
   hintsTitle: { color: colors.ink, fontSize: 15, fontWeight: '600' },
   hintsSub: { color: colors.inkDim, fontSize: 12, marginTop: 2 },
+  difficultyHint: {
+    color: colors.inkDim,
+    fontSize: 12,
+    marginTop: 8,
+    fontStyle: 'italic',
+  },
 });

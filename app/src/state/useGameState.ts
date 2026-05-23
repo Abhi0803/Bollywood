@@ -21,6 +21,7 @@ const DEFAULT_FILTERS: Filters = {
   rounds: 5,
   timer: 30,
   hintsOn: true,
+  difficulty: 'normal',
 };
 
 export type GameState = {

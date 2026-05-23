@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAudioPlayer } from 'expo-audio';
 
 import type { Song } from '../data/catalog';
@@ -53,5 +53,14 @@ export function useGameAudio(currentSong: Song | null, shouldPlay: boolean) {
     }
   }, [shouldPlay, previewUrl, player]);
 
-  return { trackId, previewUrl, looking };
+  // Seek to the start and play — used by the "Replay clip" button on the
+  // Playing screen when players want to hear the 30s preview again. Doesn't
+  // touch the round timer; just resets the audio cursor.
+  const replay = useCallback(() => {
+    if (!previewUrl) return;
+    player.seekTo(0);
+    player.play();
+  }, [player, previewUrl]);
+
+  return { trackId, previewUrl, looking, replay };
 }

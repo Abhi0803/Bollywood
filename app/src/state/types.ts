@@ -18,12 +18,15 @@ export type MusicService = '30s' | 'apple' | 'spotify';
 
 export type User = { name: string; email: string };
 
+export type Difficulty = 'easy' | 'normal' | 'hard';
+
 export type Filters = {
   eras: Era[];
   moods: Mood[];
   rounds: number;
   timer: number;
   hintsOn: boolean;
+  difficulty: Difficulty;
 };
 
 export type HistoryEntry = {

@@ -19,6 +19,7 @@ type Props = {
   onHints: () => void;
   onSkip: () => void;
   onCancel: () => void;
+  onReplay: () => void;
 };
 
 export function PlayingScreen({
@@ -34,6 +35,7 @@ export function PlayingScreen({
   onHints,
   onSkip,
   onCancel,
+  onReplay,
 }: Props) {
   const pct = maxTime > 0 ? Math.max(0, Math.min(1, timeLeft / maxTime)) : 0;
   const lowTime = timeLeft <= 10;
@@ -52,6 +54,13 @@ export function PlayingScreen({
       <Text style={styles.label}>Now playing.</Text>
 
       <View style={styles.mystery}>
+        <Pressable
+          onPress={onReplay}
+          style={styles.replayBtn}
+          hitSlop={10}
+          accessibilityLabel="Replay clip from the start">
+          <Text style={styles.replayGlyph}>🔁</Text>
+        </Pressable>
         <Text style={styles.mysteryGlyph}>?</Text>
         <View style={styles.timerBar}>
           <View
@@ -144,6 +153,23 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 22,
     paddingVertical: 32,
+    position: 'relative',
+  },
+  replayBtn: {
+    position: 'absolute',
+    top: 14,
+    right: 14,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 209, 102, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 209, 102, 0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  replayGlyph: {
+    fontSize: 20,
   },
   mysteryGlyph: {
     color: colors.gold,

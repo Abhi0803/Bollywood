@@ -23,7 +23,7 @@ export default function App() {
   const currentSong = state.songDeck[state.songIdx] ?? null;
   const shouldPlay =
     state.screen === 'playing' && state.buzzed === null && !state.showHints;
-  const { trackId } = useGameAudio(currentSong, shouldPlay);
+  const { trackId, replay } = useGameAudio(currentSong, shouldPlay);
 
   return (
     <SafeAreaView style={styles.root}>
@@ -127,6 +127,7 @@ export default function App() {
               onHints={() => a.setShowHints(true)}
               onSkip={a.finishRoundMiss}
               onCancel={a.cancelRound}
+              onReplay={replay}
             />
             {s.showHints ? (
               <HintsOverlay
