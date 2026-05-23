@@ -1,0 +1,481 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Naam Bolo · Catalog Curator</title>
+  <style>
+    :root {
+      --bg: #160828;
+      --card: #2a1448;
+      --filmi: #ff2d6f;
+      --gold: #ffd166;
+      --teal: #2cd4c0;
+      --success: #3dffb1;
+      --danger: #ff5577;
+      --ink: #faf3e0;
+      --ink-dim: rgba(250, 243, 224, 0.62);
+      --ink-faint: rgba(250, 243, 224, 0.32);
+      --line: rgba(250, 243, 224, 0.10);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { min-height: 100vh; }
+    header { padding: 24px 32px; border-bottom: 1px solid var(--line); }
+    h1 { margin: 0; font-size: 22px; font-style: italic; }
+    h1 .gold { color: var(--gold); }
+    .stats { display: flex; gap: 24px; margin-top: 8px; font-size: 12px; color: var(--ink-dim); }
+    .stats b { color: var(--ink); font-weight: 600; }
+    nav { display: flex; gap: 4px; margin-top: 18px; }
+    .tab { background: var(--card); color: var(--ink-dim); border: 0; padding: 10px 16px; border-radius: 10px 10px 0 0; font-size: 14px; font-weight: 600; cursor: pointer; }
+    .tab.active { background: var(--gold); color: #160828; }
+    main { padding: 24px 32px; max-width: 1200px; margin: 0 auto; }
+    .panel { display: none; }
+    .panel.active { display: block; }
+    .toolbar { display: flex; gap: 12px; align-items: center; margin-bottom: 18px; flex-wrap: wrap; }
+    select, input, button { font: inherit; }
+    select { background: var(--card); color: var(--ink); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; min-width: 300px; max-width: 100%; }
+    input[type=text] { background: var(--card); color: var(--ink); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; flex: 1; min-width: 240px; }
+    button { background: var(--filmi); color: var(--ink); border: 0; border-radius: 10px; padding: 10px 16px; font-weight: 700; cursor: pointer; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    button.ghost { background: transparent; border: 1px solid var(--line); color: var(--ink); }
+    button.gold { background: var(--gold); color: #160828; }
+    button.danger { background: transparent; color: var(--danger); border: 1px solid var(--danger); }
+    button.success { background: var(--success); color: #160828; }
+    .card { background: var(--card); border-radius: 14px; padding: 18px; margin-bottom: 12px; }
+    .card.bordered { border: 1px solid var(--gold); }
+    .meta { color: var(--ink-dim); font-size: 13px; }
+    .label { color: var(--gold); font-size: 10px; letter-spacing: 1.5px; font-weight: 700; text-transform: uppercase; margin-bottom: 4px; }
+    .row { display: flex; gap: 16px; align-items: center; }
+    .row.between { justify-content: space-between; }
+    .col { flex: 1; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 720px) { .grid-2 { grid-template-columns: 1fr; } }
+    .progress { font-size: 12px; color: var(--ink-faint); }
+    .progress-bar { height: 4px; background: var(--line); border-radius: 2px; margin-top: 6px; overflow: hidden; }
+    .progress-fill { height: 100%; background: var(--gold); transition: width 0.3s ease; }
+    audio { width: 100%; margin-top: 8px; filter: invert(0.85); }
+    .result-row { background: rgba(255, 255, 255, 0.04); border-radius: 10px; padding: 14px; margin-bottom: 10px; }
+    .result-row .actions { display: flex; gap: 8px; margin-top: 10px; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 10px; font-weight: 700; letter-spacing: 1px; }
+    .badge.weak { background: rgba(255, 140, 66, 0.2); color: #ff8c42; }
+    .badge.no-results { background: rgba(255, 85, 119, 0.2); color: var(--danger); }
+    .badge.reviewed { background: rgba(61, 255, 177, 0.2); color: var(--success); }
+    .empty { padding: 40px; text-align: center; color: var(--ink-faint); }
+    .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--card); border: 1px solid var(--gold); padding: 12px 20px; border-radius: 12px; font-size: 14px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5); z-index: 100; opacity: 0; transition: opacity 0.2s; pointer-events: none; }
+    .toast.show { opacity: 1; }
+    .toast.error { border-color: var(--danger); }
+    .toast.success { border-color: var(--success); }
+    code { background: rgba(255, 255, 255, 0.07); padding: 2px 6px; border-radius: 4px; font-size: 12px; }
+    .help { margin-top: 24px; padding: 16px; background: rgba(255, 255, 255, 0.03); border-radius: 10px; font-size: 13px; color: var(--ink-dim); line-height: 1.5; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Naam Bolo · <span class="gold">Catalog Curator</span></h1>
+    <div class="stats" id="stats">Loading…</div>
+    <nav>
+      <button class="tab active" data-tab="recover">🔴 Recover (NO_RESULTS)</button>
+      <button class="tab" data-tab="fix">🟠 Fix (WEAK)</button>
+    </nav>
+  </header>
+
+  <main>
+    <section id="recover-panel" class="panel active">
+      <div class="toolbar">
+        <button class="ghost" id="recover-next">Skip to next unreviewed →</button>
+        <button class="ghost" id="recover-mark-reviewed">Skip (mark reviewed)</button>
+        <button class="danger" id="recover-drop">Drop permanently</button>
+      </div>
+      <select id="recover-select"></select>
+      <div id="recover-current"></div>
+    </section>
+
+    <section id="fix-panel" class="panel">
+      <div class="toolbar">
+        <button class="ghost" id="fix-next">Skip to next unreviewed →</button>
+        <button class="ghost" id="fix-mark-reviewed">Skip (mark reviewed)</button>
+        <button class="success" id="fix-keep">✓ Keep as-is</button>
+        <button class="danger" id="fix-remove">✗ Remove from catalog</button>
+      </div>
+      <select id="fix-select"></select>
+      <div id="fix-current"></div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast"></div>
+
+  <script>
+  // ── State ──────────────────────────────────────────────────────────────
+  const state = {
+    noResults: [],
+    weak: [],
+    reviewed: new Set(),
+    counts: { catalog: 0, noResults: 0, weak: 0, reviewed: 0 },
+    activeTab: 'recover',
+    recoverIdx: 0,
+    fixIdx: 0,
+    searchResults: [],
+  };
+
+  // ── DOM helpers ────────────────────────────────────────────────────────
+  const $ = (id) => document.getElementById(id);
+  const el = (tag, attrs = {}, ...children) => {
+    const node = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) {
+      if (k === 'class') node.className = v;
+      else if (k === 'onclick') node.onclick = v;
+      else if (k.startsWith('data-')) node.setAttribute(k, v);
+      else node[k] = v;
+    }
+    for (const c of children) {
+      if (c == null) continue;
+      node.appendChild(typeof c === 'string' ? document.createTextNode(c) : c);
+    }
+    return node;
+  };
+
+  function toast(msg, kind = '') {
+    const t = $('toast');
+    t.textContent = msg;
+    t.className = `toast show ${kind}`;
+    setTimeout(() => { t.className = 'toast'; }, 2400);
+  }
+
+  // ── API ────────────────────────────────────────────────────────────────
+  async function api(path, opts = {}) {
+    const res = await fetch(path, {
+      method: opts.body ? 'POST' : 'GET',
+      headers: opts.body ? { 'Content-Type': 'application/json' } : {},
+      body: opts.body ? JSON.stringify(opts.body) : undefined,
+    });
+    if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+    return res.json();
+  }
+
+  async function refreshState() {
+    const s = await api('/api/state');
+    state.noResults = s.noResults;
+    state.weak = s.weak;
+    state.reviewed = new Set(s.reviewed);
+    state.counts = s.counts;
+    renderStats();
+    renderSelectors();
+    renderCurrent();
+  }
+
+  // iTunes Search hit straight from browser. Apple sends CORS headers so this
+  // works without our backend proxying.
+  async function itunesSearch(term) {
+    const url = `https://itunes.apple.com/search?term=${encodeURIComponent(term)}&entity=song&country=in&limit=15`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`iTunes ${res.status}`);
+    const data = await res.json();
+    return (data.results || []).filter((r) => r.previewUrl);
+  }
+
+  // ── Render: stats + tabs ───────────────────────────────────────────────
+  function renderStats() {
+    const c = state.counts;
+    const reviewedPct = c.reviewed && (c.noResults + c.weak)
+      ? Math.round((c.reviewed / (c.noResults + c.weak)) * 100)
+      : 0;
+    $('stats').innerHTML =
+      `Catalog: <b>${c.catalog}</b> songs · ` +
+      `NO_RESULTS pool: <b>${c.noResults}</b> · ` +
+      `WEAK pool: <b>${c.weak}</b> · ` +
+      `Reviewed: <b>${c.reviewed}</b> (${reviewedPct}%)`;
+  }
+
+  function activate(tab) {
+    state.activeTab = tab;
+    for (const t of document.querySelectorAll('.tab')) {
+      t.classList.toggle('active', t.dataset.tab === tab);
+    }
+    for (const p of document.querySelectorAll('.panel')) {
+      p.classList.toggle('active', p.id === `${tab}-panel`);
+    }
+    renderCurrent();
+  }
+
+  // ── Render: selectors ──────────────────────────────────────────────────
+  function renderSelectors() {
+    const rs = $('recover-select');
+    rs.innerHTML = '';
+    for (let i = 0; i < state.noResults.length; i++) {
+      const s = state.noResults[i];
+      const marked = state.reviewed.has(s.id) ? ' ✓' : '';
+      rs.appendChild(el('option', { value: String(i) },
+        `[${s.id}] ${s.song} / ${s.movie} (${s.year})${marked}`));
+    }
+    rs.value = String(state.recoverIdx);
+
+    const fs = $('fix-select');
+    fs.innerHTML = '';
+    for (let i = 0; i < state.weak.length; i++) {
+      const r = state.weak[i];
+      const marked = state.reviewed.has(r.id) ? ' ✓' : '';
+      fs.appendChild(el('option', { value: String(i) },
+        `[${r.id}] ${r.song} / ${r.movie}${marked}`));
+    }
+    fs.value = String(state.fixIdx);
+  }
+
+  // ── Render: current item ───────────────────────────────────────────────
+  function renderCurrent() {
+    if (state.activeTab === 'recover') renderRecoverCurrent();
+    else renderFixCurrent();
+  }
+
+  function renderRecoverCurrent() {
+    const container = $('recover-current');
+    container.innerHTML = '';
+    const item = state.noResults[state.recoverIdx];
+    if (!item) {
+      container.appendChild(el('div', { class: 'empty' }, '🎉 Nothing to recover.'));
+      return;
+    }
+    const isReviewed = state.reviewed.has(item.id);
+    const head = el('div', { class: 'card bordered' },
+      el('div', { class: 'row between' },
+        el('div', {},
+          el('span', { class: 'badge no-results' }, 'NO_RESULTS'),
+          isReviewed ? el('span', { class: 'badge reviewed', style: 'margin-left:8px' }, '✓ REVIEWED') : null,
+          el('div', { class: 'label', style: 'margin-top:10px' }, `Pruned entry · ${item.id}`),
+          el('h2', { style: 'margin:4px 0 0 0; font-style: italic;' }, item.song),
+          el('div', { class: 'meta' }, `${item.movie} · ${item.year} · ${item.era} · ${item.mood}`),
+          el('div', { class: 'meta', style: 'margin-top:4px' }, `dir. ${item.director} · ${item.cast}`),
+        ),
+      ),
+    );
+    container.appendChild(head);
+
+    const searchTerm = `${item.song} ${item.movie}`;
+    const searchInput = el('input', { type: 'text', value: searchTerm, id: 'recover-search-input' });
+    const searchBtn = el('button', { class: 'gold', id: 'recover-search-btn' }, '🔍 Search iTunes');
+    const searchRow = el('div', { class: 'toolbar', style: 'margin-top:18px' }, searchInput, searchBtn);
+    container.appendChild(searchRow);
+
+    const resultsDiv = el('div', { id: 'recover-results' });
+    container.appendChild(resultsDiv);
+
+    searchBtn.onclick = () => doRecoverSearch();
+
+    container.appendChild(el('div', { class: 'help' },
+      'Search → listen to candidates → "✓ Add this back" updates the catalog with the chosen iTunes track\'s title/movie/year and re-inserts the entry. "Drop permanently" leaves the catalog unchanged but marks this entry reviewed so it won\'t bug you again.',
+    ));
+  }
+
+  async function doRecoverSearch() {
+    const input = $('recover-search-input');
+    const div = $('recover-results');
+    div.innerHTML = '';
+    div.appendChild(el('div', { class: 'meta', style: 'padding:14px' }, 'Searching…'));
+    try {
+      const results = await itunesSearch(input.value);
+      div.innerHTML = '';
+      if (results.length === 0) {
+        div.appendChild(el('div', { class: 'empty' }, 'No results with preview URLs. Try a different search term.'));
+        return;
+      }
+      for (const r of results) {
+        const audio = el('audio', { src: r.previewUrl, controls: true });
+        const useBtn = el('button', { class: 'success' }, '✓ Add this back');
+        const row = el('div', { class: 'result-row' },
+          el('div', { class: 'meta', style: 'color: var(--ink); font-weight: 600;' }, r.trackName),
+          el('div', { class: 'meta' }, `${r.artistName} · ${r.collectionName || '?'}${r.releaseDate ? ' · ' + r.releaseDate.slice(0,4) : ''}`),
+          audio,
+          el('div', { class: 'actions' }, useBtn),
+        );
+        useBtn.onclick = async () => {
+          await addRecovered(state.noResults[state.recoverIdx], r);
+        };
+        div.appendChild(row);
+      }
+    } catch (e) {
+      div.innerHTML = '';
+      div.appendChild(el('div', { class: 'empty', style: 'color: var(--danger)' }, `Search failed: ${e.message}`));
+    }
+  }
+
+  async function addRecovered(original, itunesTrack) {
+    try {
+      const movie = (itunesTrack.collectionName || original.movie).replace(/\s*\(.*?\)\s*$/, '').trim();
+      const year = itunesTrack.releaseDate ? Number(itunesTrack.releaseDate.slice(0, 4)) : original.year;
+      await api('/api/catalog/add', {
+        body: {
+          original,
+          replacement: { song: itunesTrack.trackName, movie, year },
+        },
+      });
+      toast('Added back to catalog ✓', 'success');
+      await refreshState();
+      advanceRecover();
+    } catch (e) {
+      toast('Add failed: ' + e.message, 'error');
+    }
+  }
+
+  function renderFixCurrent() {
+    const container = $('fix-current');
+    container.innerHTML = '';
+    const item = state.weak[state.fixIdx];
+    if (!item) {
+      container.appendChild(el('div', { class: 'empty' }, '🎉 Nothing to fix.'));
+      return;
+    }
+    const isReviewed = state.reviewed.has(item.id);
+    container.appendChild(el('div', { class: 'card bordered' },
+      el('span', { class: 'badge weak' }, 'WEAK MATCH'),
+      isReviewed ? el('span', { class: 'badge reviewed', style: 'margin-left:8px' }, '✓ REVIEWED') : null,
+      el('div', { class: 'grid-2', style: 'margin-top:14px' },
+        el('div', {},
+          el('div', { class: 'label' }, 'Catalog says'),
+          el('h2', { style: 'margin:4px 0 0 0; font-style: italic;' }, item.song),
+          el('div', { class: 'meta' }, item.movie),
+          el('div', { class: 'meta', style: 'margin-top:4px' }, `id: ${item.id}`),
+        ),
+        el('div', {},
+          el('div', { class: 'label' }, 'iTunes returned'),
+          el('div', { style: 'font-weight:600' }, item.matchedTrack || '—'),
+          el('div', { class: 'meta' }, item.matchedArtist || '—'),
+          el('div', { class: 'meta' }, item.matchedAlbum || '—'),
+          item.previewUrl ? el('audio', { src: item.previewUrl, controls: true }) : null,
+        ),
+      ),
+    ));
+
+    const searchInput = el('input', { type: 'text', value: `${item.song} ${item.movie}`, id: 'fix-search-input' });
+    const searchBtn = el('button', { class: 'gold', id: 'fix-search-btn' }, '🔍 Search for better match');
+    container.appendChild(el('div', { class: 'toolbar', style: 'margin-top:18px' }, searchInput, searchBtn));
+    const resultsDiv = el('div', { id: 'fix-results' });
+    container.appendChild(resultsDiv);
+    searchBtn.onclick = () => doFixSearch();
+
+    container.appendChild(el('div', { class: 'help' },
+      '"Keep as-is" trusts the WEAK match — playable but possibly the wrong recording. "Remove from catalog" deletes the entry from <code>catalog.json</code>. "Search for better" lets you find the right recording and update the catalog entry\'s metadata to match.',
+    ));
+  }
+
+  async function doFixSearch() {
+    const input = $('fix-search-input');
+    const div = $('fix-results');
+    div.innerHTML = '';
+    div.appendChild(el('div', { class: 'meta', style: 'padding:14px' }, 'Searching…'));
+    try {
+      const results = await itunesSearch(input.value);
+      div.innerHTML = '';
+      if (results.length === 0) {
+        div.appendChild(el('div', { class: 'empty' }, 'No results with preview URLs.'));
+        return;
+      }
+      for (const r of results) {
+        const audio = el('audio', { src: r.previewUrl, controls: true });
+        const useBtn = el('button', { class: 'success' }, '✓ Use this — update catalog');
+        const row = el('div', { class: 'result-row' },
+          el('div', { class: 'meta', style: 'color: var(--ink); font-weight: 600;' }, r.trackName),
+          el('div', { class: 'meta' }, `${r.artistName} · ${r.collectionName || '?'}${r.releaseDate ? ' · ' + r.releaseDate.slice(0,4) : ''}`),
+          audio,
+          el('div', { class: 'actions' }, useBtn),
+        );
+        useBtn.onclick = async () => {
+          await updateWeak(state.weak[state.fixIdx], r);
+        };
+        div.appendChild(row);
+      }
+    } catch (e) {
+      div.innerHTML = '';
+      div.appendChild(el('div', { class: 'empty', style: 'color: var(--danger)' }, `Search failed: ${e.message}`));
+    }
+  }
+
+  async function updateWeak(weakEntry, itunesTrack) {
+    try {
+      const movie = (itunesTrack.collectionName || weakEntry.movie).replace(/\s*\(.*?\)\s*$/, '').trim();
+      const year = itunesTrack.releaseDate ? Number(itunesTrack.releaseDate.slice(0, 4)) : undefined;
+      const patch = { song: itunesTrack.trackName, movie };
+      if (year) patch.year = year;
+      await api('/api/catalog/update', { body: { id: weakEntry.id, patch } });
+      toast('Catalog entry updated ✓', 'success');
+      await refreshState();
+      advanceFix();
+    } catch (e) {
+      toast('Update failed: ' + e.message, 'error');
+    }
+  }
+
+  // ── Advance / navigation ────────────────────────────────────────────────
+  function advanceRecover() {
+    for (let i = state.recoverIdx + 1; i < state.noResults.length; i++) {
+      if (!state.reviewed.has(state.noResults[i].id)) { state.recoverIdx = i; break; }
+    }
+    renderSelectors();
+    renderCurrent();
+  }
+  function advanceFix() {
+    for (let i = state.fixIdx + 1; i < state.weak.length; i++) {
+      if (!state.reviewed.has(state.weak[i].id)) { state.fixIdx = i; break; }
+    }
+    renderSelectors();
+    renderCurrent();
+  }
+
+  // ── Event wiring ────────────────────────────────────────────────────────
+  document.querySelectorAll('.tab').forEach((t) => t.onclick = () => activate(t.dataset.tab));
+
+  $('recover-select').onchange = (e) => { state.recoverIdx = Number(e.target.value); renderCurrent(); };
+  $('fix-select').onchange = (e) => { state.fixIdx = Number(e.target.value); renderCurrent(); };
+
+  $('recover-next').onclick = () => advanceRecover();
+  $('fix-next').onclick = () => advanceFix();
+
+  $('recover-mark-reviewed').onclick = async () => {
+    const item = state.noResults[state.recoverIdx];
+    if (!item) return;
+    await api('/api/reviewed', { body: { id: item.id } });
+    toast('Marked reviewed', 'success');
+    await refreshState();
+    advanceRecover();
+  };
+  $('fix-mark-reviewed').onclick = async () => {
+    const item = state.weak[state.fixIdx];
+    if (!item) return;
+    await api('/api/reviewed', { body: { id: item.id } });
+    toast('Marked reviewed', 'success');
+    await refreshState();
+    advanceFix();
+  };
+
+  $('recover-drop').onclick = async () => {
+    const item = state.noResults[state.recoverIdx];
+    if (!item) return;
+    if (!confirm(`Permanently drop "${item.song}" / ${item.movie}? (just marks reviewed — catalog already had this pruned)`)) return;
+    await api('/api/reviewed', { body: { id: item.id } });
+    toast('Dropped', 'success');
+    await refreshState();
+    advanceRecover();
+  };
+
+  $('fix-keep').onclick = async () => {
+    const item = state.weak[state.fixIdx];
+    if (!item) return;
+    await api('/api/reviewed', { body: { id: item.id } });
+    toast('Kept', 'success');
+    await refreshState();
+    advanceFix();
+  };
+  $('fix-remove').onclick = async () => {
+    const item = state.weak[state.fixIdx];
+    if (!item) return;
+    if (!confirm(`Remove "${item.song}" / ${item.movie} from catalog?`)) return;
+    await api('/api/catalog/remove', { body: { id: item.id } });
+    toast('Removed from catalog', 'success');
+    await refreshState();
+    advanceFix();
+  };
+
+  // ── Boot ───────────────────────────────────────────────────────────────
+  refreshState().catch((e) => toast('Failed to load: ' + e.message, 'error'));
+  </script>
+</body>
+</html>
