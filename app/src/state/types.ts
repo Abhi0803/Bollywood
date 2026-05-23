@@ -7,6 +7,7 @@ export type Screen =
   | 'connect'
   | 'home'
   | 'settings'
+  | 'addsong'
   | 'teams'
   | 'filters'
   | 'ready'

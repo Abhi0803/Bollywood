@@ -106,18 +106,28 @@ export type PickArgs = {
   filters: Filters;
   recentlyPlayedIds: string[];
   blockedIds?: string[];
+  // User-added songs to merge into the pool alongside bundled SONGS
+  extraSongs?: Song[];
   count: number;
 };
 
-export function pickSongs({ filters, recentlyPlayedIds, blockedIds = [], count }: PickArgs): Song[] {
+export function pickSongs({
+  filters,
+  recentlyPlayedIds,
+  blockedIds = [],
+  extraSongs = [],
+  count,
+}: PickArgs): Song[] {
+  const allSongs = extraSongs.length > 0 ? [...SONGS, ...extraSongs] : SONGS;
+
   // 1. Filter to era/mood + drop blocklist
-  let filtered = applyFilters(SONGS, filters, blockedIds);
+  let filtered = applyFilters(allSongs, filters, blockedIds);
   if (filtered.length === 0) {
     // Filters too narrow OR blocklist swallowed the eligible pool.
     // Last-resort fallback: use full catalog minus blocklist.
     const blocked = new Set(blockedIds);
-    filtered = SONGS.filter((s) => !blocked.has(s.id));
-    if (filtered.length === 0) filtered = [...SONGS];
+    filtered = allSongs.filter((s) => !blocked.has(s.id));
+    if (filtered.length === 0) filtered = [...allSongs];
   }
 
   // 2. Split fresh (not recent) vs stale (recent); prefer fresh
@@ -158,6 +168,7 @@ export type ReplaceArgs = {
   filters: Filters;
   recentlyPlayedIds: string[];
   blockedIds?: string[];
+  extraSongs?: Song[];
   excludeSongIds: string[];
   // Movies already in the deck — prefer NOT to repeat unless forced.
   // Helps the cancel-round flow stay diverse.
@@ -168,16 +179,19 @@ export function pickReplacement({
   filters,
   recentlyPlayedIds,
   blockedIds = [],
+  extraSongs = [],
   excludeSongIds,
   excludeMovies = [],
 }: ReplaceArgs): Song | null {
+  const allSongs = extraSongs.length > 0 ? [...SONGS, ...extraSongs] : SONGS;
+
   // 1. Filter, drop blocked + current deck
-  let pool = applyFilters(SONGS, filters, blockedIds).filter(
+  let pool = applyFilters(allSongs, filters, blockedIds).filter(
     (s) => !excludeSongIds.includes(s.id),
   );
   if (pool.length === 0) {
     const blocked = new Set(blockedIds);
-    pool = SONGS.filter((s) => !excludeSongIds.includes(s.id) && !blocked.has(s.id));
+    pool = allSongs.filter((s) => !excludeSongIds.includes(s.id) && !blocked.has(s.id));
   }
   if (pool.length === 0) return null;
 

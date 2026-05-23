@@ -3,6 +3,7 @@ import { SafeAreaView, StyleSheet, View } from 'react-native';
 
 import { useGameAudio } from './src/state/useGameAudio';
 import { useGameState } from './src/state/useGameState';
+import { AddSongScreen } from './src/screens/AddSongScreen';
 import { BuzzedOverlay } from './src/screens/BuzzedOverlay';
 import { ConnectScreen } from './src/screens/ConnectScreen';
 import { FiltersScreen } from './src/screens/FiltersScreen';
@@ -70,6 +71,17 @@ export default function App() {
             service={s.service}
             onNewGame={() => a.go('teams')}
             onSettings={() => a.go('settings')}
+            onAddSong={() => a.go('addsong')}
+          />
+        );
+      case 'addsong':
+        return (
+          <AddSongScreen
+            onBack={() => a.go('home')}
+            onSaved={async () => {
+              await a.refreshUserCatalog();
+              a.go('home');
+            }}
           />
         );
       case 'settings':

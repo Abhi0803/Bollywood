@@ -10,6 +10,7 @@ type Props = {
   service: MusicService | null;
   onNewGame: () => void;
   onSettings: () => void;
+  onAddSong: () => void;
 };
 
 const serviceLabel = (s: MusicService | null): string => {
@@ -19,7 +20,7 @@ const serviceLabel = (s: MusicService | null): string => {
   return 'No music linked';
 };
 
-export function HomeScreen({ user, service, onNewGame, onSettings }: Props) {
+export function HomeScreen({ user, service, onNewGame, onSettings, onAddSong }: Props) {
   return (
     <ScreenLayout>
       <View style={styles.headerRow}>
@@ -59,6 +60,17 @@ export function HomeScreen({ user, service, onNewGame, onSettings }: Props) {
           <Text style={styles.modeSub}>Coming soon</Text>
         </View>
       </View>
+
+      <Pressable onPress={onAddSong} style={styles.addSongRow}>
+        <Text style={styles.addSongIcon}>+</Text>
+        <View style={{ flex: 1, marginLeft: 12 }}>
+          <Text style={styles.addSongTitle}>Add a song to your catalog</Text>
+          <Text style={styles.addSongSub}>
+            Missing a favourite? Search iTunes, fill in the details, save.
+          </Text>
+        </View>
+        <Text style={styles.addSongCaret}>›</Text>
+      </Pressable>
     </ScreenLayout>
   );
 }
@@ -131,4 +143,28 @@ const styles = StyleSheet.create({
   modeCardDim: { opacity: 0.5 },
   modeTitle: { color: colors.ink, fontSize: 16, fontWeight: '700' },
   modeSub: { color: colors.inkDim, fontSize: 12, marginTop: 4 },
+  addSongRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 18,
+    padding: 16,
+    borderRadius: radius.card,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: 'rgba(255, 209, 102, 0.05)',
+  },
+  addSongIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.gold,
+    color: '#160828',
+    textAlign: 'center',
+    lineHeight: 36,
+    fontSize: 22,
+    fontWeight: '700',
+  },
+  addSongTitle: { color: colors.ink, fontSize: 15, fontWeight: '600' },
+  addSongSub: { color: colors.inkDim, fontSize: 12, marginTop: 2, lineHeight: 16 },
+  addSongCaret: { color: colors.inkFaint, fontSize: 22 },
 });

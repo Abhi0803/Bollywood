@@ -5,6 +5,7 @@ import { DEFAULT_TEAMS_BY_COUNT, type Team } from '../data/teams';
 import { addToBlocklist, loadBlocklist } from './blocklist';
 import { loadRecent, recentIds, recordPlay } from './history';
 import { loadPreferences, savePreferences } from './preferences';
+import { loadUserCatalog } from './userCatalog';
 import { pickReplacement, pickSongs } from '../services/songPicker';
 import type {
   Filters,
@@ -64,6 +65,7 @@ export type GameActions = {
   quitGame(): void;
   blockCurrentSong(): void;
   blockSongById(id: string): void;
+  refreshUserCatalog(): Promise<void>;
   nextRound(): void;
   revealHint(key: HintKey): void;
   setShowHints(v: boolean): void;
@@ -94,30 +96,42 @@ export function useGameState(): { state: GameState; actions: GameActions } {
   const recentIdsRef = useRef<string[]>([]);
   // Blocklist of song IDs the user marked "never play again".
   const blockedIdsRef = useRef<string[]>([]);
+  // User-added songs (loaded from disk, merged into picker pool).
+  const userSongsRef = useRef<Song[]>([]);
   // Track whether prefs have loaded — only after this do we start saving on
   // change, so the initial render's default values don't overwrite saved ones.
   const prefsLoadedRef = useRef(false);
 
-  // Load persisted history + preferences + blocklist on first mount.
+  // Load persisted history + preferences + blocklist + user catalog on mount.
   useEffect(() => {
     let cancelled = false;
-    Promise.all([loadRecent(), loadPreferences(), loadBlocklist()]).then(
-      ([records, prefs, blocked]) => {
-        if (cancelled) return;
-        recentIdsRef.current = recentIds(records);
-        blockedIdsRef.current = blocked;
-        if (prefs.teams && prefs.teams.length >= 2) {
-          setTeamsState(prefs.teams.map((t) => ({ ...t, score: 0 })));
-        }
-        if (prefs.filters) {
-          setFiltersState({ ...DEFAULT_FILTERS, ...prefs.filters });
-        }
-        prefsLoadedRef.current = true;
-      },
-    );
+    Promise.all([
+      loadRecent(),
+      loadPreferences(),
+      loadBlocklist(),
+      loadUserCatalog(),
+    ]).then(([records, prefs, blocked, userSongs]) => {
+      if (cancelled) return;
+      recentIdsRef.current = recentIds(records);
+      blockedIdsRef.current = blocked;
+      userSongsRef.current = userSongs;
+      if (prefs.teams && prefs.teams.length >= 2) {
+        setTeamsState(prefs.teams.map((t) => ({ ...t, score: 0 })));
+      }
+      if (prefs.filters) {
+        setFiltersState({ ...DEFAULT_FILTERS, ...prefs.filters });
+      }
+      prefsLoadedRef.current = true;
+    });
     return () => {
       cancelled = true;
     };
+  }, []);
+
+  // Allow the AddSong screen to push new user songs into the in-memory
+  // ref without forcing a full reload.
+  const refreshUserCatalog = useCallback(async () => {
+    userSongsRef.current = await loadUserCatalog();
   }, []);
 
   // Persist team setup (names + colors, not scores) whenever it changes —
@@ -159,6 +173,7 @@ export function useGameState(): { state: GameState; actions: GameActions } {
       filters,
       recentlyPlayedIds: recentIdsRef.current,
       blockedIds: blockedIdsRef.current,
+      extraSongs: userSongsRef.current,
       count: filters.rounds,
     });
     setSongDeck(deck.length > 0 ? deck : SONGS.slice(0, filters.rounds));
@@ -288,6 +303,7 @@ export function useGameState(): { state: GameState; actions: GameActions } {
         filters,
         recentlyPlayedIds: recentIdsRef.current,
         blockedIds: blockedIdsRef.current,
+        extraSongs: userSongsRef.current,
         excludeSongIds: songDeck.map((s) => s.id),
         excludeMovies: currentMovie ? [currentMovie] : [],
       });
@@ -378,6 +394,7 @@ export function useGameState(): { state: GameState; actions: GameActions } {
       quitGame,
       blockCurrentSong,
       blockSongById,
+      refreshUserCatalog,
       nextRound,
       revealHint,
       setShowHints,
