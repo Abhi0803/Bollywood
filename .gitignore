@@ -44,3 +44,10 @@ coverage/
 
 # Local Expo dev-server log capture
 expo-dev.log
+
+# Catalog backup drafts (user's iterative work — kept locally, not tracked)
+_catalog-backups/
+
+# Verification script output (regenerate via verify-catalog.mjs)
+app/scripts/verify-results.json
+app/scripts/verify.log
