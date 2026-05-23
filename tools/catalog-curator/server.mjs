@@ -110,27 +110,36 @@ const server = http.createServer(async (req, res) => {
       const prePrune = fs.existsSync(PATHS.prePrune) ? readJson(PATHS.prePrune) : [];
       const reviewed = [...loadReviewed()];
 
-      // ── NO_RESULTS pool: pulled from pre-prune backup (verify IDs match
-      // because verification ran against the pre-prune catalog).
-      const noResultIds = new Set(
-        verify.results.filter((r) => r.status === 'NO_RESULTS').map((r) => r.id),
-      );
-      const noResults = prePrune.filter((s) => noResultIds.has(s.id));
-
-      // ── WEAK pool: verify-results.json IDs are stale (catalog was pruned
-      // and renumbered after the run). Re-map each verify entry to its
-      // current catalog ID by (song, movie) match.
+      // Recover pool = songs in the pre-prune backup that are NOT in the
+      // current catalog. Matched by song+movie signature only — IDs get
+      // renumbered after every prune so they can't be trusted across the
+      // backup/current divide.
       const catalogByKey = new Map();
       for (const s of catalog) {
         const key = `${s.song.toLowerCase().trim()}|${s.movie.toLowerCase().trim()}`;
         catalogByKey.set(key, s.id);
       }
-      const weakEntries = verify.results
-        .filter((r) => r.status === 'WEAK')
+      const noResults = prePrune.filter((s) => {
+        const k = `${s.song.toLowerCase().trim()}|${s.movie.toLowerCase().trim()}`;
+        return !catalogByKey.has(k);
+      });
+
+      // Weak pool = catalog entries the verifier matched with a low-confidence
+      // score (still passes the runtime threshold of 5 but worth eyeballing).
+      // Mapped via song+movie sig so renumbered IDs still resolve.
+      const SCORE_REVIEW_FLOOR = 5;
+      const SCORE_REVIEW_CEIL = 6;
+      const weakEntries = (verify.results || [])
+        .filter(
+          (r) =>
+            typeof r.score === 'number' &&
+            r.score >= SCORE_REVIEW_FLOOR &&
+            r.score <= SCORE_REVIEW_CEIL,
+        )
         .map((r) => {
           const key = `${(r.song || '').toLowerCase().trim()}|${(r.movie || '').toLowerCase().trim()}`;
           const currentId = catalogByKey.get(key);
-          if (!currentId) return null; // was pruned, no current entry
+          if (!currentId) return null;
           return { ...r, id: currentId };
         })
         .filter(Boolean);
