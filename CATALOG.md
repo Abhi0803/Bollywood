@@ -1,12 +1,12 @@
 # Naam Bolo — Song Catalog
 
-Auto-generated from `app/src/data/catalog.ts`. Re-run `node app/scripts/dump-catalog.mjs` after edits.
+Auto-generated from `app/src/data/catalog.json`. Re-run `node app/scripts/dump-catalog.mjs` after edits.
 
 **Total**: 155 songs across 80 movies.
 
 **Popularity legend**: 🔥 iconic · ◐ well-known · ◌ deep cut
 
-Each movie counts each song separately — when the picker runs, it tries to use **only one song per movie per game** (movie diversity rule, see `app/src/services/songPicker.ts`).
+The picker uses **only one song per movie per game** (movie diversity rule, see `app/src/services/songPicker.ts`). Movies with 3+ songs below give the picker more options to choose from across many games.
 
 ---
 
