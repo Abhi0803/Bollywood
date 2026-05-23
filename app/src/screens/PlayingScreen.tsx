@@ -18,6 +18,7 @@ type Props = {
   onBuzz: (teamIdx: number) => void;
   onHints: () => void;
   onSkip: () => void;
+  onCancel: () => void;
 };
 
 export function PlayingScreen({
@@ -32,6 +33,7 @@ export function PlayingScreen({
   onBuzz,
   onHints,
   onSkip,
+  onCancel,
 }: Props) {
   const pct = maxTime > 0 ? Math.max(0, Math.min(1, timeLeft / maxTime)) : 0;
   const lowTime = timeLeft <= 10;
@@ -71,7 +73,10 @@ export function PlayingScreen({
             style={{ flex: 1 }}
           />
         ) : null}
-        <Pressable onPress={onSkip} style={styles.skip}>
+        <Pressable onPress={onCancel} style={styles.cancel} hitSlop={8}>
+          <Text style={styles.cancelText}>↺ Cancel</Text>
+        </Pressable>
+        <Pressable onPress={onSkip} style={styles.skip} hitSlop={8}>
           <Text style={styles.skipText}>Skip</Text>
         </Pressable>
       </View>
@@ -157,8 +162,10 @@ const styles = StyleSheet.create({
   },
   timerFill: { height: 6, borderRadius: 3 },
   waveform: { color: colors.gold, fontSize: 26, letterSpacing: 6, marginTop: 16 },
-  actionsRow: { flexDirection: 'row', gap: 10, marginTop: 18 },
-  skip: { paddingHorizontal: 18, justifyContent: 'center' },
+  actionsRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 18 },
+  cancel: { paddingHorizontal: 10, justifyContent: 'center' },
+  cancelText: { color: colors.gold, fontSize: 12, fontWeight: '700', letterSpacing: 0.5 },
+  skip: { paddingHorizontal: 10, justifyContent: 'center' },
   skipText: { color: colors.inkFaint, fontSize: 13, fontWeight: '600' },
   buzzRow: { marginTop: 14, gap: 10 },
   buzz: {

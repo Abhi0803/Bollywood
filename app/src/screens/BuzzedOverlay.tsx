@@ -9,9 +9,10 @@ type Props = {
   team: Team;
   onCorrect: () => void;
   onWrong: () => void;
+  onCancel: () => void;
 };
 
-export function BuzzedOverlay({ team, onCorrect, onWrong }: Props) {
+export function BuzzedOverlay({ team, onCorrect, onWrong, onCancel }: Props) {
   return (
     <View style={[styles.root, { backgroundColor: team.color1 }]}>
       <Text style={styles.label}>BUZZED · MUSIC PAUSED</Text>
@@ -21,6 +22,11 @@ export function BuzzedOverlay({ team, onCorrect, onWrong }: Props) {
       <View style={{ marginTop: 32, alignSelf: 'stretch', gap: 10 }}>
         <FilmiButton label="✓  Correct — award the point" variant="gold" onPress={onCorrect} />
         <FilmiButton label="✗  Wrong — resume music" variant="ghost" onPress={onWrong} />
+        <FilmiButton
+          label="↺  Cancel round — both heard the answer"
+          variant="danger"
+          onPress={onCancel}
+        />
       </View>
     </View>
   );

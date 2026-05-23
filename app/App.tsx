@@ -126,6 +126,7 @@ export default function App() {
               onBuzz={a.onBuzz}
               onHints={() => a.setShowHints(true)}
               onSkip={a.finishRoundMiss}
+              onCancel={a.cancelRound}
             />
             {s.showHints ? (
               <HintsOverlay
@@ -140,6 +141,7 @@ export default function App() {
                 team={s.teams[s.buzzed]}
                 onCorrect={a.onCorrect}
                 onWrong={a.onWrong}
+                onCancel={a.cancelRound}
               />
             ) : null}
           </>

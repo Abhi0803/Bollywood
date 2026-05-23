@@ -15,7 +15,7 @@ type Props = {
 };
 
 const ROUND_OPTIONS = [5, 7, 10, 15];
-const TIMER_OPTIONS = [15, 30, 45, 60, 90];
+const TIMER_OPTIONS = [10, 20, 30];
 
 export function FiltersScreen({ filters, setFilters, onStart, onBack }: Props) {
   const toggle = <T extends string>(arr: T[], v: T): T[] =>

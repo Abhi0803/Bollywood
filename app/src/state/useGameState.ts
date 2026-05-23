@@ -56,6 +56,7 @@ export type GameActions = {
   onCorrect(): void;
   onWrong(): void;
   finishRoundMiss(): void;
+  cancelRound(): void;
   nextRound(): void;
   revealHint(key: HintKey): void;
   setShowHints(v: boolean): void;
@@ -174,6 +175,22 @@ export function useGameState(): { state: GameState; actions: GameActions } {
     setScreen('reveal');
   }, [songDeck, songIdx]);
 
+  // Cancel current round — replace current song with a fresh one, reset round
+  // state, stay on 'playing'. No score change. Used when the song is
+  // compromised (e.g. a wrong buzz blurted out the actual movie name).
+  const cancelRound = useCallback(() => {
+    const usedIds = new Set(songDeck.map((s) => s.id));
+    const replacement = SONGS.find((s) => !usedIds.has(s.id));
+    if (replacement) {
+      setSongDeck((cur) => cur.map((s, i) => (i === songIdx ? replacement : s)));
+    }
+    setHintsUsed([]);
+    setTimeLeft(filters.timer);
+    setMaxTime(filters.timer);
+    setBuzzed(null);
+    setShowHints(false);
+  }, [filters.timer, songDeck, songIdx]);
+
   const nextRound = useCallback(() => {
     if (round >= filters.rounds || songIdx >= songDeck.length - 1) {
       setScreen('summary');
@@ -244,6 +261,7 @@ export function useGameState(): { state: GameState; actions: GameActions } {
       onCorrect,
       onWrong,
       finishRoundMiss,
+      cancelRound,
       nextRound,
       revealHint,
       setShowHints,
