@@ -22,6 +22,8 @@ type Props = {
   onReplay: () => void;
   onQuit: () => void;
   onBlock: () => void;
+  isPaused: boolean;
+  onTogglePause: () => void;
 };
 
 export function PlayingScreen({
@@ -40,6 +42,8 @@ export function PlayingScreen({
   onReplay,
   onQuit,
   onBlock,
+  isPaused,
+  onTogglePause,
 }: Props) {
   const confirmQuit = () =>
     Alert.alert(
@@ -82,23 +86,43 @@ export function PlayingScreen({
       <Text style={styles.label}>Now playing.</Text>
 
       <View style={styles.mystery}>
-        <Pressable
-          onPress={onReplay}
-          style={styles.replayBtn}
-          hitSlop={10}
-          accessibilityLabel="Replay clip from the start">
-          <Text style={styles.replayGlyph}>🔁</Text>
-        </Pressable>
-        <Text style={styles.mysteryGlyph}>?</Text>
+        <View style={styles.audioControls}>
+          <Pressable
+            onPress={onTogglePause}
+            style={[styles.audioBtn, isPaused && styles.audioBtnActive]}
+            hitSlop={10}
+            accessibilityLabel={isPaused ? 'Resume game' : 'Pause game'}>
+            <Text style={styles.audioGlyph}>{isPaused ? '▶' : '⏸'}</Text>
+          </Pressable>
+          <Pressable
+            onPress={onReplay}
+            style={styles.audioBtn}
+            hitSlop={10}
+            accessibilityLabel="Replay clip from the start">
+            <Text style={styles.audioGlyph}>🔁</Text>
+          </Pressable>
+        </View>
+        {isPaused ? (
+          <Text style={styles.pausedLabel}>PAUSED</Text>
+        ) : (
+          <Text style={styles.mysteryGlyph}>?</Text>
+        )}
         <View style={styles.timerBar}>
           <View
             style={[
               styles.timerFill,
-              { width: `${pct * 100}%`, backgroundColor: lowTime ? colors.filmi : colors.gold },
+              {
+                width: `${pct * 100}%`,
+                backgroundColor: isPaused
+                  ? colors.inkFaint
+                  : lowTime
+                    ? colors.filmi
+                    : colors.gold,
+              },
             ]}
           />
         </View>
-        <Text style={styles.waveform}>~ ~ ~ ~ ~ ~ ~</Text>
+        <Text style={styles.waveform}>{isPaused ? '—  —  —' : '~ ~ ~ ~ ~ ~ ~'}</Text>
       </View>
 
       <View style={styles.actionsRow}>
@@ -126,17 +150,21 @@ export function PlayingScreen({
           <Pressable
             key={i}
             onPress={() => onBuzz(i)}
+            disabled={isPaused}
             style={({ pressed }) => [
               styles.buzz,
               { backgroundColor: t.color1, shadowColor: t.color1 },
               pressed && { opacity: 0.85 },
+              isPaused && styles.buzzDisabled,
             ]}>
             <TeamAvatar team={t} size={42} />
             <View style={{ marginLeft: 12, flex: 1 }}>
               <Text style={styles.buzzName} numberOfLines={1}>
                 {t.name}
               </Text>
-              <Text style={styles.buzzSub}>Tap to buzz</Text>
+              <Text style={styles.buzzSub}>
+                {isPaused ? 'Paused' : 'Tap to buzz'}
+              </Text>
             </View>
           </Pressable>
         ))}
@@ -204,10 +232,14 @@ const styles = StyleSheet.create({
     paddingVertical: 32,
     position: 'relative',
   },
-  replayBtn: {
+  audioControls: {
     position: 'absolute',
     top: 14,
     right: 14,
+    flexDirection: 'row',
+    gap: 8,
+  },
+  audioBtn: {
     width: 44,
     height: 44,
     borderRadius: 22,
@@ -217,8 +249,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  replayGlyph: {
+  audioBtnActive: {
+    backgroundColor: colors.gold,
+    borderColor: colors.gold,
+  },
+  audioGlyph: {
     fontSize: 20,
+    color: colors.ink,
   },
   mysteryGlyph: {
     color: colors.gold,
@@ -226,6 +263,13 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     fontWeight: '700',
     opacity: 0.85,
+  },
+  pausedLabel: {
+    color: colors.gold,
+    fontSize: 28,
+    fontWeight: '700',
+    letterSpacing: 4,
+    paddingVertical: 60,
   },
   timerBar: {
     height: 6,
@@ -254,6 +298,7 @@ const styles = StyleSheet.create({
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 6 },
   },
+  buzzDisabled: { opacity: 0.4 },
   buzzName: { color: colors.ink, fontSize: 18, fontStyle: 'italic', fontWeight: '700' },
   buzzSub: { color: 'rgba(255,255,255,0.7)', fontSize: 11, marginTop: 2, fontWeight: '600' },
   invisible: { width: 0, height: 0, opacity: 0 },

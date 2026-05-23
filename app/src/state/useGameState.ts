@@ -46,6 +46,8 @@ export type GameState = {
   // True when current Reveal is showing a song that was cancelled mid-round
   // rather than a guess / miss. Drives different Reveal copy + flow.
   lastWasCancelled: boolean;
+  // Player-initiated pause — freezes timer + audio + buzz.
+  isPaused: boolean;
 };
 
 export type GameActions = {
@@ -66,6 +68,8 @@ export type GameActions = {
   blockCurrentSong(): void;
   blockSongById(id: string): void;
   refreshUserCatalog(): Promise<void>;
+  togglePause(): void;
+  resetTimer(): void;
   nextRound(): void;
   revealHint(key: HintKey): void;
   setShowHints(v: boolean): void;
@@ -90,6 +94,7 @@ export function useGameState(): { state: GameState; actions: GameActions } {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [lastWin, setLastWin] = useState<LastWin>(null);
   const [lastWasCancelled, setLastWasCancelled] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
 
   // Recently-played IDs, persisted to disk. Held in a ref because the picker
   // reads it imperatively from inside other callbacks.
@@ -198,8 +203,18 @@ export function useGameState(): { state: GameState; actions: GameActions } {
     setBuzzed(null);
     setShowHints(false);
     setLastWasCancelled(false);
+    setIsPaused(false);
     setScreen('playing');
   }, [filters.timer]);
+
+  const togglePause = useCallback(() => setIsPaused((p) => !p), []);
+
+  // Reset the round's listen-time budget. Called by the Replay button — the
+  // 30s isn't a guess deadline, it's the audio playback window, so when the
+  // host replays the clip the budget restarts.
+  const resetTimer = useCallback(() => {
+    setTimeLeft(maxTime);
+  }, [maxTime]);
 
   const onBuzz = useCallback((teamIdx: number) => setBuzzed(teamIdx), []);
 
@@ -258,6 +273,7 @@ export function useGameState(): { state: GameState; actions: GameActions } {
     setShowHints(false);
     setHintsUsed([]);
     setLastWasCancelled(false);
+    setIsPaused(false);
     setTeamsState((cur) => cur.map((t) => ({ ...t, score: 0 })));
     setScreen('home');
   }, []);
@@ -346,16 +362,16 @@ export function useGameState(): { state: GameState; actions: GameActions } {
   }, []);
 
   // Timer tick — only ticks during active playback, not while buzzed / hints
-  // overlay open.
+  // overlay open / manually paused.
   useEffect(() => {
-    if (screen !== 'playing' || buzzed !== null || showHints) return;
+    if (screen !== 'playing' || buzzed !== null || showHints || isPaused) return;
     if (timeLeft <= 0) {
       finishRoundMiss();
       return;
     }
     const id = setTimeout(() => setTimeLeft((s) => s - 1), 1000);
     return () => clearTimeout(id);
-  }, [screen, timeLeft, buzzed, showHints, finishRoundMiss]);
+  }, [screen, timeLeft, buzzed, showHints, isPaused, finishRoundMiss]);
 
   return {
     state: {
@@ -376,6 +392,7 @@ export function useGameState(): { state: GameState; actions: GameActions } {
       history,
       lastWin,
       lastWasCancelled,
+      isPaused,
     },
     actions: {
       go,
@@ -395,6 +412,8 @@ export function useGameState(): { state: GameState; actions: GameActions } {
       blockCurrentSong,
       blockSongById,
       refreshUserCatalog,
+      togglePause,
+      resetTimer,
       nextRound,
       revealHint,
       setShowHints,

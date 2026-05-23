@@ -23,8 +23,18 @@ export default function App() {
   const { state, actions } = useGameState();
   const currentSong = state.songDeck[state.songIdx] ?? null;
   const shouldPlay =
-    state.screen === 'playing' && state.buzzed === null && !state.showHints;
+    state.screen === 'playing' &&
+    state.buzzed === null &&
+    !state.showHints &&
+    !state.isPaused;
   const { trackId, replay } = useGameAudio(currentSong, shouldPlay);
+
+  // Combined replay: restart audio from 0 AND reset the round timer, since
+  // the 30s is the audio-playback budget, not a guess deadline.
+  const replayAndResetTimer = () => {
+    replay();
+    actions.resetTimer();
+  };
 
   return (
     <SafeAreaView style={styles.root}>
@@ -139,9 +149,11 @@ export default function App() {
               onHints={() => a.setShowHints(true)}
               onSkip={a.finishRoundMiss}
               onCancel={a.cancelRound}
-              onReplay={replay}
+              onReplay={replayAndResetTimer}
               onQuit={a.quitGame}
               onBlock={a.blockCurrentSong}
+              isPaused={s.isPaused}
+              onTogglePause={a.togglePause}
             />
             {s.showHints ? (
               <HintsOverlay
