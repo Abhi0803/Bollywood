@@ -15,16 +15,40 @@ type Props = {
   itunesTrackId?: number;
   onNext: () => void;
   isLast: boolean;
+  wasCancelled: boolean;
 };
 
-export function RevealScreen({ song, winner, points, itunesTrackId, onNext, isLast }: Props) {
+export function RevealScreen({
+  song,
+  winner,
+  points,
+  itunesTrackId,
+  onNext,
+  isLast,
+  wasCancelled,
+}: Props) {
   const openInAppleMusic = () => {
     if (!itunesTrackId) return;
     Linking.openURL(appleMusicSongLink(itunesTrackId));
   };
 
+  const nextLabel = wasCancelled
+    ? 'Continue with new song →'
+    : isLast
+      ? 'See final scores →'
+      : 'Next round →';
+
   return (
     <ScreenLayout scroll>
+      {wasCancelled ? (
+        <View style={styles.cancelBanner}>
+          <Text style={styles.cancelLabel}>ROUND CANCELLED · NO POINTS AWARDED</Text>
+          <Text style={styles.cancelHint}>
+            Song is burned. New song coming up under the same round.
+          </Text>
+        </View>
+      ) : null}
+
       <View style={[styles.poster, { backgroundColor: song.swatch[0] }]}>
         <View style={[styles.posterInner, { borderColor: song.swatch[1] }]}>
           <Text style={styles.posterLabel}>THE SONG WAS</Text>
@@ -39,7 +63,7 @@ export function RevealScreen({ song, winner, points, itunesTrackId, onNext, isLa
         </View>
       </View>
 
-      {winner ? (
+      {wasCancelled ? null : winner ? (
         <View style={[styles.winBadge, { backgroundColor: winner.color1 }]}>
           <TeamAvatar team={winner} size={56} />
           <View style={{ marginLeft: 12, flex: 1 }}>
@@ -64,7 +88,7 @@ export function RevealScreen({ song, winner, points, itunesTrackId, onNext, isLa
       ) : null}
 
       <FilmiButton
-        label={isLast ? 'See final scores →' : 'Next round →'}
+        label={nextLabel}
         variant="gold"
         onPress={onNext}
         style={{ marginTop: 14 }}
@@ -74,11 +98,26 @@ export function RevealScreen({ song, winner, points, itunesTrackId, onNext, isLa
 }
 
 const styles = StyleSheet.create({
-  poster: {
+  cancelBanner: {
+    backgroundColor: colors.danger,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     borderRadius: radius.card,
-    padding: 6,
-    marginTop: 10,
+    marginTop: 4,
+    marginBottom: 14,
   },
+  cancelLabel: {
+    color: colors.ink,
+    fontSize: 11,
+    letterSpacing: 1.5,
+    fontWeight: '700',
+  },
+  cancelHint: {
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: 12,
+    marginTop: 4,
+  },
+  poster: { borderRadius: radius.card, padding: 6, marginTop: 10 },
   posterInner: {
     borderRadius: radius.card - 4,
     borderWidth: 1,

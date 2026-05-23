@@ -154,6 +154,7 @@ export default function App() {
             points={s.lastWin?.points ?? 0}
             itunesTrackId={trackId ?? undefined}
             isLast={s.round >= s.filters.rounds}
+            wasCancelled={s.lastWasCancelled}
             onNext={a.nextRound}
           />
         );
