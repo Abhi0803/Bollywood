@@ -1,4 +1,4 @@
-import { Linking, StyleSheet, Text, View } from 'react-native';
+import { Alert, Linking, StyleSheet, Text, View } from 'react-native';
 
 import { FilmiButton } from '../components/FilmiButton';
 import { ScreenLayout } from '../components/ScreenLayout';
@@ -14,6 +14,7 @@ type Props = {
   points: number;
   itunesTrackId?: number;
   onNext: () => void;
+  onQuit: () => void;
   isLast: boolean;
   wasCancelled: boolean;
 };
@@ -24,6 +25,7 @@ export function RevealScreen({
   points,
   itunesTrackId,
   onNext,
+  onQuit,
   isLast,
   wasCancelled,
 }: Props) {
@@ -31,6 +33,16 @@ export function RevealScreen({
     if (!itunesTrackId) return;
     Linking.openURL(appleMusicSongLink(itunesTrackId));
   };
+
+  const confirmQuit = () =>
+    Alert.alert(
+      'End the game?',
+      'Current scores will be discarded. Team setup and filters are saved.',
+      [
+        { text: 'Keep playing', style: 'cancel' },
+        { text: 'End game', style: 'destructive', onPress: onQuit },
+      ],
+    );
 
   const nextLabel = wasCancelled
     ? 'Continue with new song →'
@@ -92,6 +104,12 @@ export function RevealScreen({
         variant="gold"
         onPress={onNext}
         style={{ marginTop: 14 }}
+      />
+      <FilmiButton
+        label="End game · back to home"
+        variant="ghost"
+        onPress={confirmQuit}
+        style={{ marginTop: 10 }}
       />
     </ScreenLayout>
   );

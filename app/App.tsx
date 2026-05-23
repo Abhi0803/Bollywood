@@ -128,6 +128,7 @@ export default function App() {
               onSkip={a.finishRoundMiss}
               onCancel={a.cancelRound}
               onReplay={replay}
+              onQuit={a.quitGame}
             />
             {s.showHints ? (
               <HintsOverlay
@@ -158,6 +159,7 @@ export default function App() {
             isLast={s.round >= s.filters.rounds}
             wasCancelled={s.lastWasCancelled}
             onNext={a.nextRound}
+            onQuit={a.quitGame}
           />
         );
       case 'summary':

@@ -48329,5 +48329,124 @@
     "era": "2000s",
     "mood": "Romantic",
     "popularity": 3
+  },
+  {
+    "id": "s2844",
+    "song": "Pucho Zara Pucho",
+    "movie": "Raja Hindustani",
+    "year": 1996,
+    "director": "Dharmesh Darshan",
+    "cast": "Aamir Khan, Karisma Kapoor",
+    "plot": "A taxi driver from the hills falls for a rich city girl on a hill-station holiday.",
+    "duration": 254,
+    "swatch": [
+      "#e63946",
+      "#f1c453"
+    ],
+    "era": "90s",
+    "mood": "Romantic",
+    "popularity": 1
+  },
+  {
+    "id": "s2845",
+    "song": "Jadu Hai Nasha Hai",
+    "movie": "Jism",
+    "year": 2002,
+    "director": "Vikram Bhatt",
+    "cast": "Aamir Khan, Rani Mukerji",
+    "plot": "A small-time street brawler is torn between his loyalty to a goon and a girl he loves.",
+    "duration": 291,
+    "swatch": [
+      "#d62828",
+      "#fcbf49"
+    ],
+    "era": "90s",
+    "mood": "Romantic",
+    "popularity": 1
+  },
+  {
+    "id": "s2846",
+    "song": "Tu Meri Dost Hain",
+    "movie": "Yuvvraaj",
+    "year": 2008,
+    "director": "Mahesh Manjrekar",
+    "cast": "Sanjay Dutt, Namrata Shirodkar, Reema Lagoo",
+    "plot": "A small-time vegetable seller is sucked into Mumbai's underworld through one wrong turn.",
+    "duration": 275,
+    "swatch": [
+      "#f48c06",
+      "#ffba08"
+    ],
+    "era": "90s",
+    "mood": "Romantic",
+    "popularity": 1
+  },
+  {
+    "id": "s2847",
+    "song": "Jeeye to Jeeye Kaise",
+    "movie": "Saajan",
+    "year": 1993,
+    "director": "Lawrence D'Souza",
+    "cast": "Salman Khan, Sanjay Dutt, Madhuri Dixit",
+    "plot": "A disabled poet writes love letters that his handsome best friend takes credit for.",
+    "duration": 324,
+    "swatch": [
+      "#22223b",
+      "#9a8c98"
+    ],
+    "era": "90s",
+    "mood": "Sad",
+    "popularity": 1
+  },
+  {
+    "id": "s2848",
+    "song": "Jaan-E-Jigar Jaaneman",
+    "movie": "Aashiqui",
+    "year": 1989,
+    "director": "Mahesh Bhatt",
+    "cast": "Rahul Roy, Anu Aggarwal",
+    "plot": "A young singer and an orphan girl fall in love against the world's odds.",
+    "duration": 282,
+    "swatch": [
+      "#d62828",
+      "#fcbf49"
+    ],
+    "era": "90s",
+    "mood": "Romantic",
+    "popularity": 1
+  },
+  {
+    "id": "s2849",
+    "song": "Chudiyan Khanak Gayeen (From \"Lamhe\")",
+    "movie": "Enjoy Folk Songs",
+    "year": 1991,
+    "director": "Yash Chopra",
+    "cast": "Anil Kapoor, Sridevi",
+    "plot": "A man who loved a woman in his youth meets her grown-up daughter years later.",
+    "duration": 253,
+    "swatch": [
+      "#cb997e",
+      "#eddcd2"
+    ],
+    "era": "90s",
+    "mood": "Folk",
+    "popularity": 1
+  },
+  {
+    "id": "s2850",
+    "song": "Tum Toh Dhokhebaaz Ho",
+    "movie": "Saajan Chale Sasural",
+    "year": 1996,
+    "director": "David Dhawan",
+    "cast": "Govinda, Tabu, Karisma Kapoor",
+    "plot": "A simple singer accidentally ends up with two wives across two cities.",
+    "duration": 328,
+    "swatch": [
+      "#f72585",
+      "#f9c74f"
+    ],
+    "era": "90s",
+    "mood": "Romantic",
+    "popularity": 1
   }
 ]

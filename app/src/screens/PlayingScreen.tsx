@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { FilmiButton } from '../components/FilmiButton';
 import { TeamAvatar } from '../components/TeamAvatar';
@@ -20,6 +20,7 @@ type Props = {
   onSkip: () => void;
   onCancel: () => void;
   onReplay: () => void;
+  onQuit: () => void;
 };
 
 export function PlayingScreen({
@@ -36,16 +37,31 @@ export function PlayingScreen({
   onSkip,
   onCancel,
   onReplay,
+  onQuit,
 }: Props) {
+  const confirmQuit = () =>
+    Alert.alert(
+      'End the game?',
+      'Current scores will be discarded. Team setup and filters are saved.',
+      [
+        { text: 'Keep playing', style: 'cancel' },
+        { text: 'End game', style: 'destructive', onPress: onQuit },
+      ],
+    );
   const pct = maxTime > 0 ? Math.max(0, Math.min(1, timeLeft / maxTime)) : 0;
   const lowTime = timeLeft <= 10;
 
   return (
     <View style={styles.root}>
       <View style={styles.headerRow}>
-        <Text style={styles.roundLabel}>
-          Round <Text style={styles.roundNum}>{round}</Text> / {totalRounds}
-        </Text>
+        <View style={styles.headerLeft}>
+          <Pressable onPress={confirmQuit} style={styles.quitBtn} hitSlop={10}>
+            <Text style={styles.quitText}>✕</Text>
+          </Pressable>
+          <Text style={styles.roundLabel}>
+            Round <Text style={styles.roundNum}>{round}</Text> / {totalRounds}
+          </Text>
+        </View>
         <View style={[styles.timer, lowTime && styles.timerLow]}>
           <Text style={[styles.timerText, lowTime && { color: colors.filmi }]}>{timeLeft}</Text>
         </View>
@@ -129,6 +145,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  quitBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.bgCard,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quitText: {
+    color: colors.inkDim,
+    fontSize: 16,
+    fontWeight: '700',
   },
   roundLabel: { color: colors.inkDim, fontSize: 13, fontWeight: '500' },
   roundNum: { color: colors.ink, fontWeight: '700' },

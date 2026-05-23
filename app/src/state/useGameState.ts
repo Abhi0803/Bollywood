@@ -60,6 +60,7 @@ export type GameActions = {
   onWrong(): void;
   finishRoundMiss(): void;
   cancelRound(): void;
+  quitGame(): void;
   nextRound(): void;
   revealHint(key: HintKey): void;
   setShowHints(v: boolean): void;
@@ -221,6 +222,22 @@ export function useGameState(): { state: GameState; actions: GameActions } {
     setScreen('reveal');
   }, [markPlayed, songDeck, songIdx]);
 
+  // Quit the current game — wipes round/score/history state and returns to
+  // Home. Filters and team setup are preserved (those are persisted prefs).
+  // Confirmation happens at the UI layer via Alert.
+  const quitGame = useCallback(() => {
+    setRound(1);
+    setSongIdx(0);
+    setHistory([]);
+    setLastWin(null);
+    setBuzzed(null);
+    setShowHints(false);
+    setHintsUsed([]);
+    setLastWasCancelled(false);
+    setTeamsState((cur) => cur.map((t) => ({ ...t, score: 0 })));
+    setScreen('home');
+  }, []);
+
   // Cancel current round — reveal the burned song (so everyone learns the
   // answer), keep round number, take no score. Player then taps Continue
   // and the picker swaps in a fresh song under the same round number.
@@ -328,6 +345,7 @@ export function useGameState(): { state: GameState; actions: GameActions } {
       onWrong,
       finishRoundMiss,
       cancelRound,
+      quitGame,
       nextRound,
       revealHint,
       setShowHints,
