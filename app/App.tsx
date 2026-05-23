@@ -139,6 +139,7 @@ export default function App() {
             {s.buzzed !== null ? (
               <BuzzedOverlay
                 team={s.teams[s.buzzed]}
+                song={currentSong!}
                 onCorrect={a.onCorrect}
                 onWrong={a.onWrong}
                 onCancel={a.cancelRound}
