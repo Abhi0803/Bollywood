@@ -51,3 +51,7 @@ _catalog-backups/
 # Verification script output (regenerate via verify-catalog.mjs)
 app/scripts/verify-results.json
 app/scripts/verify.log
+
+# Curator tool local state
+tools/catalog-curator/.reviewed.json
+tools/catalog-curator/server.log
