@@ -1,19 +1,17 @@
-// Verify every song in catalog.json against the iTunes Search API.
+// Verify every song in catalog.json against the iTunes Search API using
+// EXACTLY the same fuzzy lookup the runtime uses (see
+// src/services/itunesLookup.ts). Each entry classified as:
+//
+//   HIT    — runtime lookup will return a valid preview URL → plays cleanly
+//   SILENT — runtime lookup will return null → round runs out without audio
+//
+// SILENT covers everything bad: no iTunes results, no preview URL, and
+// matches that fall under the confidence threshold (which the runtime
+// would refuse to play to avoid audio-vs-metadata mismatch).
 //
 // Output files (relative to repo root):
-//   app/scripts/verify-results.json   per-song machine-readable results
-//   CATALOG_VERIFY.md                 human-readable report grouped by status
-//
-// Rate-limiting strategy:
-//   - 750 ms base delay between calls → ~80 req/min (Apple's documented
-//     soft limit is ~20/min but the Search API tolerates more; this gives
-//     reasonable headroom)
-//   - Exponential backoff on HTTP 403 / 429: 5s, 15s, 45s
-//   - Up to 4 retries per song before marking ERROR
-//   - Partial results written every 25 songs so a Ctrl+C never loses
-//     more than the last batch
-//
-// For 3270 songs this takes ~40-45 minutes if no rate-limit hits.
+//   app/scripts/verify-results.json   per-song results
+//   CATALOG_VERIFY.md                 human-readable report
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -27,39 +25,107 @@ const REPORT_MD = path.resolve(__dirname, '..', '..', 'CATALOG_VERIFY.md');
 const BASE_DELAY_MS = 750;
 const BACKOFF_STEPS_MS = [5_000, 15_000, 45_000];
 const MAX_RETRIES = 4;
+const SCORE_THRESHOLD = 5;
 
 const songs = JSON.parse(fs.readFileSync(SRC, 'utf8'));
 console.log(`Loaded ${songs.length} songs from ${SRC}`);
-console.log(`Estimated runtime: ~${Math.round((songs.length * BASE_DELAY_MS) / 60_000)} min if no rate-limit hits.`);
+console.log(
+  `Estimated runtime: ~${Math.round((songs.length * BASE_DELAY_MS * 1.4) / 60_000)} min ` +
+    `(extra 40% for noise-strip retries on subset of songs).`,
+);
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// ─── Mirror of src/services/itunesLookup.ts ────────────────────────────────
+const NOISE_PATTERNS = [
+  /\(\s*(reprise[d]?|unplugged|remix|extended|short version|long version|club mix|rock version|female version|male version|instrumental|cover|version)\s*\)/gi,
+  /\b(reprise[d]?|unplugged|remix|extended|club mix|rock version|female version|male version|instrumental)\b/gi,
+];
+function stripNoise(t) {
+  let o = t;
+  for (const p of NOISE_PATTERNS) o = o.replace(p, ' ');
+  return o.replace(/\s+/g, ' ').trim();
+}
+
+function normalize(s) {
+  return s
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]/g, '');
+}
+
+function editDistance(a, b) {
+  const m = a.length;
+  const n = b.length;
+  if (m === 0) return n;
+  if (n === 0) return m;
+  let prev = new Array(n + 1);
+  for (let j = 0; j <= n; j++) prev[j] = j;
+  for (let i = 1; i <= m; i++) {
+    const cur = new Array(n + 1);
+    cur[0] = i;
+    for (let j = 1; j <= n; j++) {
+      cur[j] =
+        a[i - 1] === b[j - 1]
+          ? prev[j - 1]
+          : 1 + Math.min(prev[j - 1], prev[j], cur[j - 1]);
+    }
+    prev = cur;
+  }
+  return prev[n];
+}
+
+function similarity(a, b) {
+  const na = normalize(a);
+  const nb = normalize(b);
+  if (!na || !nb) return 0;
+  if (na === nb) return 1;
+  if (na.includes(nb) || nb.includes(na)) {
+    const ratio = Math.min(na.length, nb.length) / Math.max(na.length, nb.length);
+    if (ratio >= 0.5) return Math.max(ratio, 0.8);
+  }
+  const maxLen = Math.max(na.length, nb.length);
+  return Math.max(0, 1 - editDistance(na, nb) / maxLen);
+}
+
+function albumMatchesMovie(album, movie) {
+  if (!album || !movie) return false;
+  if (album.toLowerCase().includes(movie.toLowerCase())) return true;
+  const stripped = album.replace(/\([^)]*\)/g, '').trim();
+  return similarity(stripped, movie) >= 0.85;
+}
+
 function scoreMatch(track, song) {
   let s = 0;
-  const t = (track.trackName || '').toLowerCase();
-  const wanted = (song.song || '').toLowerCase();
-  if (t === wanted) s += 5;
-  else if (t.startsWith(wanted) || wanted.startsWith(t)) s += 3;
-  else if (t.includes(wanted) || wanted.includes(t)) s += 1;
-  const album = (track.collectionName || '').toLowerCase();
-  const wantedMovie = (song.movie || '').toLowerCase();
-  if (album && wantedMovie && album.includes(wantedMovie)) s += 3;
+  const sim = similarity(track.trackName || '', song.song);
+  if (sim >= 0.8) s += 5;
+  else if (sim >= 0.55) s += 3;
+  else if (sim >= 0.3) s += 1;
+  if (albumMatchesMovie(track.collectionName || '', song.movie)) s += 3;
   if (track.previewUrl) s += 1;
   return s;
 }
 
-async function searchOne(song) {
-  const term = `${song.song} ${song.movie}`;
+function pickBest(results, song) {
+  const withPreview = (results || []).filter((r) => r.previewUrl);
+  if (withPreview.length === 0) return { track: null, score: 0 };
+  const ranked = [...withPreview].sort(
+    (a, b) => scoreMatch(b, song) - scoreMatch(a, song),
+  );
+  return { track: ranked[0], score: scoreMatch(ranked[0], song) };
+}
+
+async function searchITunes(term) {
   const url =
     `https://itunes.apple.com/search?term=${encodeURIComponent(term)}` +
     `&entity=song&country=in&limit=15`;
-
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {
       const res = await fetch(url);
       if (res.status === 403 || res.status === 429) {
         const backoff = BACKOFF_STEPS_MS[Math.min(attempt, BACKOFF_STEPS_MS.length - 1)];
-        process.stdout.write(`  [${res.status}] backing off ${backoff / 1000}s… `);
+        process.stdout.write(`  [${res.status}] backoff ${backoff / 1000}s… `);
         await sleep(backoff);
         process.stdout.write(`\n`);
         continue;
@@ -75,35 +141,43 @@ async function searchOne(song) {
   return [];
 }
 
-function classify(song, results) {
-  if (results.length === 0) return { status: 'NO_RESULTS', best: null, score: 0 };
-  const withPreview = results.filter((r) => r.previewUrl);
-  if (withPreview.length === 0) {
-    return { status: 'NO_PREVIEW', best: results[0], score: 0 };
+// Full lookup matching the runtime logic. May make 1 or 2 iTunes calls.
+async function lookup(song) {
+  let { track, score } = pickBest(
+    await searchITunes(`${song.song} ${song.movie}`),
+    song,
+  );
+  let retried = false;
+  if (!track || score < SCORE_THRESHOLD) {
+    const cleaned = stripNoise(song.song);
+    if (cleaned && normalize(cleaned) !== normalize(song.song)) {
+      retried = true;
+      await sleep(BASE_DELAY_MS); // throttle the retry call too
+      const retry = pickBest(await searchITunes(`${cleaned} ${song.movie}`), song);
+      if (retry.track && retry.score > score) {
+        track = retry.track;
+        score = retry.score;
+      }
+    }
   }
-  const ranked = [...withPreview].sort((a, b) => scoreMatch(b, song) - scoreMatch(a, song));
-  const best = ranked[0];
-  const score = scoreMatch(best, song);
-  let status;
-  if (score >= 8) status = 'HIT';
-  else if (score >= 5) status = 'MAYBE';
-  else status = 'WEAK';
-  return { status, best, score };
+  return { track, score, retried };
 }
 
 function summary(results) {
-  const c = { HIT: 0, MAYBE: 0, WEAK: 0, NO_PREVIEW: 0, NO_RESULTS: 0, ERROR: 0 };
-  for (const r of results) c[r.status] = (c[r.status] || 0) + 1;
+  const c = { HIT: 0, SILENT: 0, ERROR: 0, RETRIED: 0 };
+  for (const r of results) {
+    c[r.status] = (c[r.status] || 0) + 1;
+    if (r.retried) c.RETRIED++;
+  }
   return c;
 }
 
 function writeMarkdown(results, counters) {
-  const buckets = {};
-  for (const s of ['NO_RESULTS', 'NO_PREVIEW', 'WEAK', 'MAYBE', 'ERROR', 'HIT']) {
-    buckets[s] = results.filter((r) => r.status === s);
-  }
   const total = results.length;
   const pct = (n) => (total > 0 ? Math.round((n / total) * 100) : 0);
+  const silent = results.filter((r) => r.status === 'SILENT');
+  const errors = results.filter((r) => r.status === 'ERROR');
+  const hits = results.filter((r) => r.status === 'HIT');
 
   let out = `# Catalog Verification Report
 
@@ -112,63 +186,35 @@ Songs checked: **${total}**
 
 | Status | Count | % | Meaning |
 |---|---|---|---|
-| 🟢 HIT | ${counters.HIT || 0} | ${pct(counters.HIT || 0)}% | Strong match — playable |
-| 🟡 MAYBE | ${counters.MAYBE || 0} | ${pct(counters.MAYBE || 0)}% | Preview found, match quality medium |
-| 🟠 WEAK | ${counters.WEAK || 0} | ${pct(counters.WEAK || 0)}% | Preview found but probably wrong song — fix metadata |
-| 🔴 NO_PREVIEW | ${counters.NO_PREVIEW || 0} | ${pct(counters.NO_PREVIEW || 0)}% | Track on iTunes but no 30s preview exposed |
-| 🔴 NO_RESULTS | ${counters.NO_RESULTS || 0} | ${pct(counters.NO_RESULTS || 0)}% | iTunes returned nothing |
+| 🟢 HIT | ${counters.HIT || 0} | ${pct(counters.HIT || 0)}% | App plays a high-confidence match |
+| 🔴 SILENT | ${counters.SILENT || 0} | ${pct(counters.SILENT || 0)}% | App returns null (silent round) — pruned |
 | ⚠️ ERROR | ${counters.ERROR || 0} | ${pct(counters.ERROR || 0)}% | Network / rate-limit failure |
 
+${counters.RETRIED ? `\nNoise-strip retry triggered on **${counters.RETRIED}** entries (reprise/remix etc).\n` : ''}
 `;
 
-  const sectionConfigs = [
-    {
-      key: 'NO_RESULTS',
-      title: '🔴 No results — iTunes knows nothing',
-      hint: 'Spelling drift between catalog and iTunes India listing. Check the song on music.apple.com/in/.',
-    },
-    {
-      key: 'NO_PREVIEW',
-      title: '🔴 No preview URL',
-      hint: 'Track exists on iTunes India but no 30-sec preview. Replace or remove.',
-    },
-    {
-      key: 'WEAK',
-      title: '🟠 Weak match — probably wrong song',
-      hint: 'iTunes returned a track with this title but different artist/album/movie. Make `song` or `movie` more specific.',
-    },
-    {
-      key: 'MAYBE',
-      title: '🟡 Medium-confidence match',
-      hint: 'Eyeball whether the matched album corresponds to the same movie.',
-    },
-    {
-      key: 'ERROR',
-      title: '⚠️ API errors',
-      hint: 'Rate-limit or network blip. Re-run.',
-    },
-  ];
-
-  for (const cfg of sectionConfigs) {
-    const list = buckets[cfg.key];
-    if (!list || list.length === 0) continue;
-    out += `## ${cfg.title} (${list.length})\n\n${cfg.hint}\n\n`;
-    out += `| id | catalog song | catalog movie | iTunes matched | iTunes artist | iTunes album |\n`;
-    out += `|---|---|---|---|---|---|\n`;
-    for (const r of list) {
+  if (silent.length > 0) {
+    out += `\n## 🔴 SILENT — pruned from catalog (${silent.length})\n\n`;
+    out += `These were removed from catalog.json. Recover them in the curator (http://localhost:7878) by searching iTunes for the right spelling.\n\n`;
+    out += `| id | catalog song | catalog movie | iTunes best guess (rejected) |\n`;
+    out += `|---|---|---|---|\n`;
+    for (const r of silent) {
       const m = (s) => (s == null ? '—' : String(s).replace(/\|/g, '\\|'));
-      out += `| \`${r.id}\` | ${m(r.song)} | ${m(r.movie)} | ${m(r.matchedTrack)} | ${m(r.matchedArtist)} | ${m(r.matchedAlbum)} |\n`;
+      const guess = r.matchedTrack
+        ? `${m(r.matchedTrack)} · ${m(r.matchedArtist)} · ${m(r.matchedAlbum)} (score ${r.score})`
+        : 'no results';
+      out += `| \`${r.id}\` | ${m(r.song)} | ${m(r.movie)} | ${guess} |\n`;
     }
-    out += `\n`;
   }
-
-  out += `## 🟢 Strong matches (${buckets.HIT.length})\n\nNo action needed.\n\n<details><summary>Show ${buckets.HIT.length} entries</summary>\n\n`;
-  out += `| id | song | movie | iTunes album |\n|---|---|---|---|\n`;
-  for (const r of buckets.HIT) {
+  if (errors.length > 0) {
+    out += `\n## ⚠️ ERROR (${errors.length})\n\nRe-run the script.\n\n`;
+  }
+  out += `\n## 🟢 HIT (${hits.length})\n\nNo action — these play cleanly.\n\n<details><summary>Show ${hits.length} entries</summary>\n\n`;
+  out += `| id | song | movie | matched album |\n|---|---|---|---|\n`;
+  for (const r of hits) {
     out += `| \`${r.id}\` | ${r.song} | ${r.movie} | ${r.matchedAlbum || '—'} |\n`;
   }
   out += `\n</details>\n`;
-
   return out;
 }
 
@@ -180,19 +226,19 @@ async function main() {
     const song = songs[i];
     let entry;
     try {
-      const tracks = await searchOne(song);
-      const { status, best, score } = classify(song, tracks);
+      const { track, score, retried } = await lookup(song);
       entry = {
         id: song.id,
         song: song.song,
         movie: song.movie,
-        status,
+        status: track ? 'HIT' : 'SILENT',
         score,
-        matchedTrack: best ? best.trackName : null,
-        matchedArtist: best ? best.artistName : null,
-        matchedAlbum: best ? best.collectionName : null,
-        matchedTrackId: best ? best.trackId : null,
-        previewUrl: best && best.previewUrl ? best.previewUrl : null,
+        retried,
+        matchedTrack: track ? track.trackName : null,
+        matchedArtist: track ? track.artistName : null,
+        matchedAlbum: track ? track.collectionName : null,
+        matchedTrackId: track ? track.trackId : null,
+        previewUrl: track && track.previewUrl ? track.previewUrl : null,
       };
     } catch (e) {
       entry = {
@@ -206,18 +252,17 @@ async function main() {
     results.push(entry);
 
     if ((i + 1) % 25 === 0 || i === songs.length - 1) {
-      const counters = summary(results);
+      const c = summary(results);
       const elapsed = Math.round((Date.now() - startedAt) / 1000);
-      const pct = Math.round(((i + 1) / songs.length) * 100);
       const eta = i > 0 ? Math.round(((Date.now() - startedAt) / (i + 1)) * (songs.length - i - 1) / 1000) : 0;
+      const pct = Math.round(((i + 1) / songs.length) * 100);
       console.log(
         `[${pct}%] ${i + 1}/${songs.length} · ${elapsed}s elapsed · ~${eta}s left · ` +
-          `HIT:${counters.HIT || 0} MAYBE:${counters.MAYBE || 0} WEAK:${counters.WEAK || 0} ` +
-          `NO_PREVIEW:${counters.NO_PREVIEW || 0} NO_RESULTS:${counters.NO_RESULTS || 0} ERROR:${counters.ERROR || 0}`,
+          `HIT:${c.HIT || 0} SILENT:${c.SILENT || 0} ERROR:${c.ERROR || 0} (retries:${c.RETRIED || 0})`,
       );
       fs.writeFileSync(
         RESULTS_JSON,
-        JSON.stringify({ done: i + 1, total: songs.length, counters, results }, null, 2),
+        JSON.stringify({ done: i + 1, total: songs.length, counters: c, results }, null, 2),
       );
     }
     await sleep(BASE_DELAY_MS);
@@ -229,11 +274,8 @@ async function main() {
     JSON.stringify({ done: songs.length, total: songs.length, counters, results }, null, 2),
   );
   fs.writeFileSync(REPORT_MD, writeMarkdown(results, counters));
-
   console.log('\n=== DONE ===');
   console.log('Counters:', counters);
-  console.log('Results JSON:', RESULTS_JSON);
-  console.log('Report:    ', REPORT_MD);
 }
 
 main().catch((e) => {
