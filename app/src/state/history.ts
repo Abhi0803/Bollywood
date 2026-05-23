@@ -1,34 +1,64 @@
-// Recently-played song IDs.
+// Recently-played song IDs, persisted to the app's document directory via
+// expo-file-system's File/Paths API. Survives app restarts on iOS and Android,
+// and ships unchanged into TestFlight / App Store builds.
 //
-// Currently in-memory only — clears on app restart. A previous attempt to
-// persist via @react-native-async-storage/async-storage hit an upstream
-// Metro/Expo-SDK-54 resolution bug in that package (see commit history).
-//
-// Follow-up: re-add persistence using expo-file-system (a single
-// FileSystem.writeAsStringAsync to documentDirectory) once gameplay testing
-// is stable. Behaviour for the picker is unchanged — it still avoids repeats
-// within the current session, which is enough for a single play night.
+// All filesystem failures are swallowed — storage is best-effort. If the file
+// is corrupted or the FS denies write, the picker just sees an empty history
+// (so a song might repeat a little earlier than it would otherwise).
 
+import { File, Paths } from 'expo-file-system';
+
+const FILE_NAME = 'naam-bolo-recent-v1.json';
 const MAX_HISTORY = 60;
 
 export type RecentRecord = { id: string; playedAt: number };
 
-let memory: RecentRecord[] = [];
+function getFile(): File {
+  return new File(Paths.document, FILE_NAME);
+}
 
 export async function loadRecent(): Promise<RecentRecord[]> {
-  return memory;
+  try {
+    const file = getFile();
+    if (!file.exists) return [];
+    const text = await file.text();
+    const parsed = JSON.parse(text);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(
+      (r): r is RecentRecord =>
+        r && typeof r.id === 'string' && typeof r.playedAt === 'number',
+    );
+  } catch {
+    return [];
+  }
 }
 
 export async function recordPlay(id: string): Promise<RecentRecord[]> {
-  memory = [
-    { id, playedAt: Date.now() },
-    ...memory.filter((r) => r.id !== id),
-  ].slice(0, MAX_HISTORY);
-  return memory;
+  try {
+    const existing = await loadRecent();
+    const next: RecentRecord[] = [
+      { id, playedAt: Date.now() },
+      ...existing.filter((r) => r.id !== id),
+    ].slice(0, MAX_HISTORY);
+
+    const file = getFile();
+    if (!file.exists) {
+      file.create();
+    }
+    file.write(JSON.stringify(next));
+    return next;
+  } catch {
+    return [];
+  }
 }
 
 export async function clearRecent(): Promise<void> {
-  memory = [];
+  try {
+    const file = getFile();
+    if (file.exists) file.delete();
+  } catch {
+    // ignore
+  }
 }
 
 export function recentIds(records: RecentRecord[]): string[] {
