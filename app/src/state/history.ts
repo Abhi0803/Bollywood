@@ -1,45 +1,34 @@
-// Persists recently-played song IDs across game sessions so the picker can
-// avoid them. All failures are swallowed — storage is best-effort.
+// Recently-played song IDs.
+//
+// Currently in-memory only — clears on app restart. A previous attempt to
+// persist via @react-native-async-storage/async-storage hit an upstream
+// Metro/Expo-SDK-54 resolution bug in that package (see commit history).
+//
+// Follow-up: re-add persistence using expo-file-system (a single
+// FileSystem.writeAsStringAsync to documentDirectory) once gameplay testing
+// is stable. Behaviour for the picker is unchanged — it still avoids repeats
+// within the current session, which is enough for a single play night.
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
-const KEY = 'naam-bolo:recent-songs:v1';
-const MAX_HISTORY = 60; // remember last 60 plays; older ones rotate out
+const MAX_HISTORY = 60;
 
 export type RecentRecord = { id: string; playedAt: number };
 
+let memory: RecentRecord[] = [];
+
 export async function loadRecent(): Promise<RecentRecord[]> {
-  try {
-    const raw = await AsyncStorage.getItem(KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed;
-  } catch {
-    return [];
-  }
+  return memory;
 }
 
 export async function recordPlay(id: string): Promise<RecentRecord[]> {
-  try {
-    const existing = await loadRecent();
-    const next: RecentRecord[] = [
-      { id, playedAt: Date.now() },
-      ...existing.filter((r) => r.id !== id),
-    ].slice(0, MAX_HISTORY);
-    await AsyncStorage.setItem(KEY, JSON.stringify(next));
-    return next;
-  } catch {
-    return [];
-  }
+  memory = [
+    { id, playedAt: Date.now() },
+    ...memory.filter((r) => r.id !== id),
+  ].slice(0, MAX_HISTORY);
+  return memory;
 }
 
 export async function clearRecent(): Promise<void> {
-  try {
-    await AsyncStorage.removeItem(KEY);
-  } catch {
-    // ignore
-  }
+  memory = [];
 }
 
 export function recentIds(records: RecentRecord[]): string[] {
