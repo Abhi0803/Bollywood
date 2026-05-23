@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { HINTS, SONGS, type Song } from '../data/catalog';
 import { DEFAULT_TEAMS_BY_COUNT, type Team } from '../data/teams';
+import { loadRecent, recentIds, recordPlay } from './history';
+import { pickReplacement, pickSongs } from '../services/songPicker';
 import type {
   Filters,
   HintKey,
@@ -81,6 +83,27 @@ export function useGameState(): { state: GameState; actions: GameActions } {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [lastWin, setLastWin] = useState<LastWin>(null);
 
+  // Recently-played IDs, persisted via AsyncStorage. Kept in a ref because the
+  // picker reads it imperatively (no re-render needed on update).
+  const recentIdsRef = useRef<string[]>([]);
+
+  // Load persisted history on first mount
+  useEffect(() => {
+    let cancelled = false;
+    loadRecent().then((records) => {
+      if (!cancelled) recentIdsRef.current = recentIds(records);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Persist a song play (best-effort) and update the in-memory mirror.
+  const markPlayed = useCallback(async (id: string) => {
+    const next = await recordPlay(id);
+    recentIdsRef.current = recentIds(next);
+  }, []);
+
   // Track previous screen so Connect knows whether to return to Home or Settings
   const go = useCallback(
     (to: Screen) => {
@@ -95,22 +118,13 @@ export function useGameState(): { state: GameState; actions: GameActions } {
     [],
   );
 
-  const buildDeck = useCallback((): Song[] => {
-    let deck = SONGS;
-    if (filters.eras.length > 0) {
-      deck = deck.filter((s) => filters.eras.includes(s.era));
-    }
-    if (filters.moods.length > 0) {
-      deck = deck.filter((s) => filters.moods.includes(s.mood));
-    }
-    if (deck.length === 0) deck = SONGS;
-    const shuffled = [...deck].sort(() => Math.random() - 0.5);
-    return shuffled.slice(0, filters.rounds);
-  }, [filters]);
-
   const startGame = useCallback(() => {
-    const deck = buildDeck();
-    setSongDeck(deck);
+    const deck = pickSongs({
+      filters,
+      recentlyPlayedIds: recentIdsRef.current,
+      count: filters.rounds,
+    });
+    setSongDeck(deck.length > 0 ? deck : SONGS.slice(0, filters.rounds));
     setSongIdx(0);
     setRound(1);
     setHistory([]);
@@ -122,7 +136,7 @@ export function useGameState(): { state: GameState; actions: GameActions } {
     setBuzzed(null);
     setLastWin(null);
     setScreen('ready');
-  }, [buildDeck, filters.timer]);
+  }, [filters]);
 
   const playRound = useCallback(() => {
     setHintsUsed([]);
@@ -147,18 +161,17 @@ export function useGameState(): { state: GameState; actions: GameActions } {
     if (buzzed === null) return;
     const pts = computePoints();
     const teamIdx = buzzed;
+    const song = songDeck[songIdx];
     const newTeams = teams.map((t, i) =>
       i === teamIdx ? { ...t, score: t.score + pts } : t,
     );
     setTeams(newTeams);
-    setHistory((h) => [
-      ...h,
-      { song: songDeck[songIdx], winner: newTeams[teamIdx], points: pts },
-    ]);
+    setHistory((h) => [...h, { song, winner: newTeams[teamIdx], points: pts }]);
     setLastWin({ winner: newTeams[teamIdx], points: pts });
     setBuzzed(null);
+    void markPlayed(song.id);
     setScreen('reveal');
-  }, [buzzed, computePoints, songDeck, songIdx, teams]);
+  }, [buzzed, computePoints, markPlayed, songDeck, songIdx, teams]);
 
   const onWrong = useCallback(() => {
     if (buzzed === null) return;
@@ -170,17 +183,22 @@ export function useGameState(): { state: GameState; actions: GameActions } {
   }, [buzzed]);
 
   const finishRoundMiss = useCallback(() => {
-    setHistory((h) => [...h, { song: songDeck[songIdx], winner: null, points: 0 }]);
+    const song = songDeck[songIdx];
+    setHistory((h) => [...h, { song, winner: null, points: 0 }]);
     setLastWin(null);
+    void markPlayed(song.id);
     setScreen('reveal');
-  }, [songDeck, songIdx]);
+  }, [markPlayed, songDeck, songIdx]);
 
   // Cancel current round — replace current song with a fresh one, reset round
-  // state, stay on 'playing'. No score change. Used when the song is
-  // compromised (e.g. a wrong buzz blurted out the actual movie name).
+  // state, stay on 'playing'. No score change, no recent-history entry (the
+  // song wasn't actually completed — it was thrown out).
   const cancelRound = useCallback(() => {
-    const usedIds = new Set(songDeck.map((s) => s.id));
-    const replacement = SONGS.find((s) => !usedIds.has(s.id));
+    const replacement = pickReplacement({
+      filters,
+      recentlyPlayedIds: recentIdsRef.current,
+      excludeIds: songDeck.map((s) => s.id),
+    });
     if (replacement) {
       setSongDeck((cur) => cur.map((s, i) => (i === songIdx ? replacement : s)));
     }
@@ -189,7 +207,7 @@ export function useGameState(): { state: GameState; actions: GameActions } {
     setMaxTime(filters.timer);
     setBuzzed(null);
     setShowHints(false);
-  }, [filters.timer, songDeck, songIdx]);
+  }, [filters, songDeck, songIdx]);
 
   const nextRound = useCallback(() => {
     if (round >= filters.rounds || songIdx >= songDeck.length - 1) {
