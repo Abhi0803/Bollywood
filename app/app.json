@@ -20,7 +20,9 @@
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSAppleMusicUsageDescription": "Naam Bolo plays song clips from Apple Music so players can guess the movie.",
-        "UIBackgroundModes": ["audio"]
+        "UIBackgroundModes": [
+          "audio"
+        ]
       },
       "config": {
         "usesNonExemptEncryption": false
@@ -36,7 +38,11 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -54,11 +60,12 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "PLACEHOLDER_FILL_AFTER_eas_init"
+        "projectId": "08d37c8e-818f-46be-828c-dcf9d2e2f5e3"
       }
     },
     "runtimeVersion": {
       "policy": "appVersion"
-    }
+    },
+    "owner": "abhi08nav"
   }
 }

@@ -30,7 +30,6 @@
   "submit": {
     "production": {
       "ios": {
-        "ascAppId": "PLACEHOLDER_FILL_FROM_APP_STORE_CONNECT",
         "appleTeamId": "ZRZ67ZZM5Z"
       }
     }
