@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { ScreenLayout } from '../components/ScreenLayout';
 import type { MusicService, User } from '../state/types';
@@ -72,7 +72,15 @@ export function SettingsScreen({
         <Text style={styles.actionText}>About</Text>
         <Text style={styles.rowSub}>v0.1.0</Text>
       </Pressable>
-      <Pressable onPress={onSignOut} style={styles.actionRow}>
+      <Pressable
+        onPress={() =>
+          Alert.alert('Sign out?', 'You can sign back in any time with your email.', [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Sign out', style: 'destructive', onPress: onSignOut },
+          ])
+        }
+        style={styles.actionRow}
+      >
         <Text style={[styles.actionText, { color: colors.danger }]}>Sign out</Text>
       </Pressable>
     </ScreenLayout>

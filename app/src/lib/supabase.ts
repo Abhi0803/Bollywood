@@ -29,26 +29,78 @@ if (!supabaseUrl || !supabaseAnonKey) {
   );
 }
 
-// Storage adapter wrapping SecureStore in the synchronous-style API
-// Supabase's auth module expects.
+// Chunked SecureStore adapter. SecureStore has a ~2KB per-item limit on
+// iOS, but Google/Apple OAuth sessions blow past that (3-5KB once you
+// add provider tokens + JWT claims). We split the value across as many
+// `${key}.chunk.N` items as needed, and remember the chunk count at
+// `${key}.meta`.
+const CHUNK_SIZE = 1800;
+
+async function setChunked(key: string, value: string) {
+  const meta = await SecureStore.getItemAsync(`${key}.meta`);
+  const oldCount = meta ? parseInt(meta, 10) || 0 : 0;
+
+  const chunks: string[] = [];
+  for (let i = 0; i < value.length; i += CHUNK_SIZE) {
+    chunks.push(value.slice(i, i + CHUNK_SIZE));
+  }
+  for (let i = 0; i < chunks.length; i++) {
+    await SecureStore.setItemAsync(`${key}.chunk.${i}`, chunks[i]);
+  }
+  await SecureStore.setItemAsync(`${key}.meta`, String(chunks.length));
+
+  // Clear any leftover chunks from a previous (larger) write.
+  for (let i = chunks.length; i < oldCount; i++) {
+    await SecureStore.deleteItemAsync(`${key}.chunk.${i}`);
+  }
+}
+
+async function getChunked(key: string): Promise<string | null> {
+  // Back-compat: if a non-chunked legacy value exists, return it.
+  const legacy = await SecureStore.getItemAsync(key);
+  if (legacy !== null) return legacy;
+
+  const meta = await SecureStore.getItemAsync(`${key}.meta`);
+  if (!meta) return null;
+  const count = parseInt(meta, 10) || 0;
+  if (count === 0) return null;
+  let out = '';
+  for (let i = 0; i < count; i++) {
+    const part = await SecureStore.getItemAsync(`${key}.chunk.${i}`);
+    if (part === null) return null;
+    out += part;
+  }
+  return out;
+}
+
+async function removeChunked(key: string) {
+  await SecureStore.deleteItemAsync(key);
+  const meta = await SecureStore.getItemAsync(`${key}.meta`);
+  const count = meta ? parseInt(meta, 10) || 0 : 0;
+  for (let i = 0; i < count; i++) {
+    await SecureStore.deleteItemAsync(`${key}.chunk.${i}`);
+  }
+  await SecureStore.deleteItemAsync(`${key}.meta`);
+}
+
 const secureStorageAdapter = {
   async getItem(key: string) {
     try {
-      return await SecureStore.getItemAsync(key);
+      return await getChunked(key);
     } catch {
       return null;
     }
   },
   async setItem(key: string, value: string) {
     try {
-      await SecureStore.setItemAsync(key, value);
+      await setChunked(key, value);
     } catch {
       /* best-effort */
     }
   },
   async removeItem(key: string) {
     try {
-      await SecureStore.deleteItemAsync(key);
+      await removeChunked(key);
     } catch {
       /* best-effort */
     }

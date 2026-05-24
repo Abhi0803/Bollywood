@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { Alert, StyleSheet, Text, TextInput, View } from 'react-native';
+import { StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { FilmiButton } from '../components/FilmiButton';
 import { ScreenLayout } from '../components/ScreenLayout';
-import { sendMagicLink, verifyOtpCode } from '../state/auth';
+import { sendMagicLink, signInWithApple, signInWithGoogle, verifyOtpCode } from '../state/auth';
 import { colors, radius } from '../theme/tokens';
 
 type Props = {
@@ -18,11 +18,29 @@ export function LoginScreen({ onBack }: Props) {
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
 
-  const comingSoon = (provider: string) =>
-    Alert.alert(
-      `${provider} sign-in coming soon`,
-      `We're using email magic-link / OTP for now. Sign in with ${provider} ships in v2.`,
-    );
+  const onApple = async () => {
+    setError(null);
+    setStage('submitting');
+    const result = await signInWithApple();
+    if (!result.ok) {
+      setError(result.error ?? 'Could not sign in with Apple.');
+      setStage('enter-email');
+      return;
+    }
+    // Success: useAuthSession picks up the new session → App routes onward.
+  };
+
+  const onGoogle = async () => {
+    setError(null);
+    setStage('submitting');
+    const result = await signInWithGoogle();
+    if (!result.ok) {
+      setError(result.error ?? 'Could not sign in with Google.');
+      setStage('enter-email');
+      return;
+    }
+    // Success: useAuthSession picks up the new session → App routes onward.
+  };
 
   const onSendCode = async () => {
     setError(null);
@@ -94,14 +112,16 @@ export function LoginScreen({ onBack }: Props) {
         <View style={{ marginTop: 24 }}>
           <View style={{ gap: 10 }}>
             <FilmiButton
-              label=" Continue with Apple"
+              label={stage === 'submitting' ? 'Opening Apple…' : ' Continue with Apple'}
               variant="dark"
-              onPress={() => comingSoon('Apple')}
+              onPress={onApple}
+              disabled={stage === 'submitting'}
             />
             <FilmiButton
-              label="G  Continue with Google"
+              label={stage === 'submitting' ? 'Opening Google…' : 'G  Continue with Google'}
               variant="ghost"
-              onPress={() => comingSoon('Google')}
+              onPress={onGoogle}
+              disabled={stage === 'submitting'}
             />
           </View>
 

@@ -1,172 +1,159 @@
-# Naam Bolo — Project TODO & Notes
+# Naam Bolo — Roadmap
 
-A two-team Bollywood song-guessing game. The host phone plays a song; players
-hear only the audio and shout the movie name. First team to correctly answer wins.
-
-This file is the master plan: licensing answers, prototype status, and the
-roadmap to ship.
+A two-team Bollywood song-guessing game. Host phone plays a song; teams
+buzz in to name the movie.
 
 ---
 
-## 1 · Music Licensing — Answers
+## Current state (as of 2026-05-24)
 
-### Can the app legally play full songs?
-**Only by linking the user's existing music subscription.** We cannot host or
-stream copyrighted Bollywood audio ourselves — that would require direct deals
-with every label (T-Series, Saregama, Sony Music India, Zee Music, Tips,
-Yash Raj Music) plus the publishing society (IPRS).
-
-### Does "30 seconds" make hosting clips legal?
-**No.** There is no "short clip" exemption in copyright law anywhere
-(US, India, EU). The 30-second clips you see on Spotify / Apple Music previews
-exist because **those platforms have direct licensing contracts** that permit
-previews. The 30 seconds is a contract term, not a legal carve-out we inherit.
-
-### The realistic playback options (ranked)
-
-| Option | Cost | Catalog | UX trade-off |
-|---|---|---|---|
-| **Apple Music preview API** | Free | Almost all Bollywood | 30 sec only, Apple picks the clip (usually chorus = easier) |
-| **Deezer preview API** | Free | Good Bollywood | Same 30-sec limit |
-| **Apple Music (MusicKit) linked** | User's subscription | Full | User must subscribe; trial flow works in-app |
-| **Spotify Web Playback SDK linked** | User's Premium | Full | Requires *full* Premium — Premium Mini (most India users) NOT supported; Spotify wants written approval for commercial use |
-| **Direct label licensing** | Expensive + slow | Full | Not realistic pre-launch |
-| **YouTube embed** | Free | Full | Video title/thumbnail shows the movie — kills the game |
-
-### Decision for v1
-- **Free tier:** Apple Music preview API → 30-sec clips, no login needed
-- **Pro tier:** Apple Music MusicKit primary, Spotify secondary → full songs
+**Done:**
+- 12 screens (Splash, Login, Connect, Home, AddSong, Settings, Teams, Filters, RoundReady, Playing + Hints/Buzz overlays, Reveal, Summary)
+- 2594 verified-playable Bollywood songs (Era + Mood + Director + Cast + Plot)
+- iTunes preview audio with fuzzy lookup, cross-song bleed protection, 30/45s timer options
+- Difficulty (easy/normal/hard), hints (cost points), cancel/block/quit/pause flow
+- Persistence (file system): prefs, teams, blocklist, user-added songs, history
+- Catalog curator (localhost:7878) for adding/verifying/blocking songs
+- Supabase auth: Email OTP ✅, Google ✅ (TestFlight-only), Apple ✅ (TestFlight-only)
+- Sign-out with confirmation, persistent session on relaunch
+- EAS Build pipeline (~24 of 30 monthly credits left), TestFlight #4 installed
+- GitHub Pages: privacy + terms at `abhi0803.github.io/Bollywood/`
+- Custom SMTP via Gmail (dev limit 500/day — fine for beta, swap to Resend before public)
 
 ---
 
-## 2 · Prototype Status (Current HTML)
+## 🚀 ASAP — Path to App Store (estimated 2–3 days of focused work)
 
-✅ **Done** — see `index.html`
+### Day 1 — Finish auth + verify build
+- [ ] EAS Build #5 finishes (running now, full auth wired)
+- [ ] `eas submit --platform ios --latest` → push to TestFlight
+- [ ] Install TestFlight build on iPhone
+- [ ] Verify: Email OTP, Google sign-in, Apple sign-in, sign-out, persistence
+- [ ] If anything broken → fix, rebuild, retest
 
-- 11 screens fully designed and wired
-  - Splash, Login, Connect Music, Home, Settings, Team Setup, Filters,
-    Round Ready, Playing (anti-spoiler), Reveal, Summary
-- Anti-spoiler "Now Playing" screen with 4 visual styles
-  (Mystery card · Vinyl · Visualizer · Curtain — switchable in Tweaks)
-- Hints overlay (Year / Mood / Director / Cast / Plot — each costs points)
-- Buzz-to-answer overlay with pulsing ring + Correct/Wrong scoring
-- Settings screen with "Change music source" + "Disconnect" rows
-- Two-tier Connect screen (Free 30s vs Full songs)
-- Tweaks panel: anti-spoiler style, hints, team count, timer, jump-to-screen
+### Day 2 — App Store Connect metadata
+- [ ] Decide iPad strategy: set `app.json` → `supportsTablet: false` (skip iPad screenshots) OR build iPad layouts
+- [ ] **App icon polish** — review current 1024×1024 icon, make sure it's distinctive (gold/pink filmi vibe), no transparency, no rounded corners (Apple adds those)
+- [ ] **Screenshots** (5–10 per device size, 6.7" iPhone required, 6.5" iPhone required):
+  - Splash + brand moment
+  - Sign-in screen
+  - Home with teams set up
+  - Gameplay (Playing screen with vinyl + timer)
+  - Hint overlay
+  - Buzzed-in moment
+  - Reveal screen
+  - Summary / scoreboard
+- [ ] **App Store description** — 2-3 paragraph pitch, what makes it different
+- [ ] **Promotional text** — 170 chars, changeable without re-review (use for launch promos)
+- [ ] **Keywords** — 100 chars, comma-separated (e.g. `bollywood,songs,trivia,quiz,music,hindi,filmi,guess,antakshari,party`)
+- [ ] **Category**: Primary = `Trivia` (or `Music`), Secondary = `Entertainment`
+- [ ] **Age rating** — answer the questionnaire (likely 4+; nothing inappropriate)
+- [ ] **Privacy policy URL**: `https://abhi0803.github.io/Bollywood/privacy`
+- [ ] **Support URL**: `https://abhi0803.github.io/Bollywood/`
+- [ ] **Marketing URL** (optional): same as support
+- [ ] **App Privacy disclosures** — Apple's nutrition label questionnaire:
+  - Email collected (for auth) — linked to user, used for app functionality
+  - Name collected (from Apple/Google) — linked to user, used for app functionality
+  - User content (added songs) — stored on device only
+  - No tracking, no third-party sharing beyond Supabase (auth provider)
 
----
-
-## 3 · Dev Roadmap
-
-### Phase 0 — Validate the licensing path (1 week)
-- [ ] Set up Apple Developer account ($99/yr)
-- [ ] Build a tiny proof-of-concept: hit
-      `https://itunes.apple.com/search?term=tum+hi+ho&entity=song&country=in`
-      and play the returned `previewUrl` in a basic React Native screen
-- [ ] This single test confirms the free tier works end-to-end
-
-### Phase 1 — Stack & scaffold (week 1–2)
-- [ ] React Native + Expo (cross-platform, fastest path)
-- [ ] Auth: Supabase or Firebase (email magic link + Apple + Google + phone)
-- [ ] Audio: `expo-av` for previews, MusicKit wrapper for full songs
-- [ ] Recommended libraries:
-  - [ ] `react-native-apple-music` (or roll your own MusicKit bridge)
-  - [ ] `react-native-spotify-remote`
-
-### Phase 2 — Song catalog (week 2–3) — **the actual moat**
-- [ ] Hand-curate ~500 Bollywood songs in a JSON file or Postgres table
-- [ ] Required fields per song: title, movie, year, director, cast, mood, era,
-      Apple Music store ID, Spotify URI, difficulty rating
-- [ ] Spend time on metadata quality — this directly shapes game difficulty
-- [ ] Tag for filters (era · mood · genre · hero/heroine)
-
-### Phase 3 — Core game loop (week 3–4)
-- [ ] Port the screens from this prototype to React Native
-- [ ] Wire scoring, timer, hint costs, history log
-- [ ] Persist game state locally (AsyncStorage) so resume works
-
-### Phase 4 — Music linking (week 4–6)
-- [ ] Apple Music: request MusicKit entitlement from Apple
-- [ ] Apple Music: implement subscription check + trial sign-up in-app
-- [ ] Apple Music: implement playback with arbitrary seek
-- [ ] Spotify: email Spotify Developer Relations for commercial approval
-- [ ] Spotify: implement OAuth + Web Playback SDK
-- [ ] Fall back to preview API if linking fails
-
-### Phase 5 — Multiplayer party mode (optional, week 6–7)
-- [ ] One host phone plays; player phones become buzzers via local WiFi or QR
-- [ ] Realtime: Supabase Realtime or Firebase channels
-- [ ] Anti-cheat: hide song metadata on player phones too
-
-### Phase 6 — Polish & beta (week 7–8)
-- [ ] Sound effects (buzz, reveal sting, correct/wrong)
-- [ ] Haptics on winning buzz
-- [ ] Hindi + English UI translations
-- [ ] Accessibility pass
-- [ ] Beta test with 10 friend groups; measure: songs guessed, hint usage,
-      session length, ragequits
-- [ ] App Store screenshots + privacy nutrition labels
-
-### Phase 7 — Launch
-- [ ] iOS App Store submission
-- [ ] Google Play submission
-- [ ] Landing page with demo video
-- [ ] Reach out to Bollywood / quiz YouTubers for organic launch
+### Day 3 — Submit for review
+- [ ] **Demo account** for App Review — create a test Gmail or use a real one Apple reviewers can sign into. They WILL test it.
+- [ ] **Review notes** — short paragraph: "App requires sign-in. Use the email OTP flow — enter `[demo email]`, Supabase will send a 6-digit code, enter it. Or Apple/Google sign-in. Then tap New Game → set up 2 teams → start playing."
+- [ ] **Contact info** for review (your email + phone)
+- [ ] **Export compliance** — confirm `ITSAppUsesNonExemptEncryption: false` is set (it is)
+- [ ] Submit for App Review
+- [ ] **Wait 1-3 days** for approval (sometimes hours, sometimes a week)
+- [ ] If rejected: fix the cited issue, resubmit
+- [ ] If approved: choose "Release manually" or "Automatic on approval"
 
 ---
 
-## 4 · Pre-Launch Compliance Checklist
+## 🛠 Strongly recommended before public launch (1 day of work, deferrable)
 
-- [ ] **Apple Developer Program** enrollment ($99/yr)
-- [ ] **MusicKit entitlement** request approved
-- [ ] **Spotify Developer Terms** — written commercial use approval from Spotify
-- [ ] **App Store privacy labels** — declare what data is collected and why
-- [ ] **Terms of Service + Privacy Policy** drafted
-- [ ] **Trademark check** — confirm "Naam Bolo" / chosen brand name is clear
-- [ ] **No additional Indian music licensing** required when piggybacking on
-      streaming services (they hold the licenses)
-- [ ] **Confirm Apple iTunes Search API terms** allow preview playback in
-      commercial apps (it does as of 2025, but re-verify)
+These don't BLOCK App Store approval but make v1.0 sustainable:
+
+- [ ] **Custom domain** (e.g. `naambolo.app`) — needed for branded Resend SMTP, custom support email
+- [ ] **Resend SMTP** instead of Gmail — 3000/mo free, no rate limit, proper deliverability
+- [ ] **Sentry crash reporting** — free tier 5K errors/mo. Without it you're blind to user crashes.
+- [ ] **PostHog product analytics** — free tier 1M events/mo. Tells you which screens drop users, what songs get skipped most, where the funnel breaks.
 
 ---
 
-## 5 · Open Design Questions
+## 📈 v1.1 — Sticky / shareable (first month after launch)
 
-- [ ] **Host-vs-guest split?** Currently designed as one phone for everyone.
-      Do players each have their own phone (buzzer mode)?
-- [ ] **In-app purchases?** Pro tier (full songs) vs ad-supported free tier?
-- [ ] **Regional editions?** Tamil, Telugu, Punjabi music guessing games?
-- [ ] **Catalog admin tool?** Internal-only screen for adding songs?
-- [ ] **Social features?** Share-able round summaries, friend rivalries?
-- [ ] **Spectator / TV mode?** Cast to a big screen for parties?
+Ranked by likely impact on retention + growth:
 
----
-
-## 6 · Brand & Naming Notes
-
-- Current working name: **Naam Bolo** (Hindi: "say the name")
-  - Alternatives considered: Antakshari, Filmi, Bollywood Buzz
-- Visual identity: filmi pink (#ff2d6f) + gold (#ffd166) on deep eggplant
-- Type: DM Serif Display Italic (display) + Manrope (UI) + JetBrains Mono (numbers)
-- Vibe: 70s/80s Bollywood poster meets modern iOS
+1. **Share your score** with deep link — "I scored 340 with my team! 🎵 [link]" → opens app to a pre-filled lobby. Single biggest growth lever for party games.
+2. **Daily song** — one new song per day, everyone gets the same, share streaks. Brings users back daily.
+3. **Push notifications** — only for daily song drop. Just one a day, no spam.
+4. **Game variety** — Speed Round (3s clips), Era Night (only 90s), Movie Marathon (all songs from one film), Antakshari Mode (chain by last syllable).
 
 ---
 
-## 7 · Files in This Project
+## 🎯 v1.2 / v2 — Bigger swings (months 2-6)
+
+- **Real multiplayer (separate devices)** — host phone is "screen", player phones are buzzers via Supabase Realtime. Massive feature, defer until you have proof of demand.
+- **Apple Music / Spotify full songs** — currently stubbed; requires MusicKit entitlement + Spotify commercial approval. Higher-quality audio, full songs.
+- **Regional editions** — Tamil / Telugu / Punjabi music. Each is essentially a catalog expansion + tagging update.
+- **Tournament mode** — multi-round bracket between teams.
+- **Leaderboards + achievements** — global "biggest underdog" badge etc.
+- **Spectator / TV mode** — AirPlay to TV for big parties.
+- **Hindi UI translation** — broaden audience inside India.
+- **Single-player practice mode** — solo training to learn songs without needing a group.
+
+---
+
+## 🧹 Quality / polish backlog (continuous)
+
+Things that came up during dev that should be revisited:
+
+- [ ] `SafeAreaView` deprecation warning — migrate to `react-native-safe-area-context`
+- [ ] Sound effects (buzz, reveal sting, correct/wrong sting)
+- [ ] Haptic feedback on winning buzz and correct answer
+- [ ] Accessibility pass — VoiceOver labels, large-text mode support, color-contrast for color-blind users
+- [ ] Better team avatars (currently single-letter circles)
+- [ ] Settings screen: wire up Privacy & Data / Help & Feedback rows (currently no-ops) — link to GH Pages and `mailto:`
+- [ ] Onboarding tour for first-time users (current Splash → Login is utilitarian, no explanation of game)
+- [ ] Trademark check on "Naam Bolo" name (don't want a takedown after launch)
+- [ ] iPad screenshots OR `supportsTablet: false` (see Day 2)
+
+---
+
+## 🔒 Compliance reminders
+
+- ✅ Apple Developer Program enrolled (Team ZRZ67ZZM5Z)
+- ✅ Sign in with Apple capability enabled (required because we offer Google sign-in)
+- ✅ Privacy policy + Terms live on GH Pages
+- ✅ `ITSAppUsesNonExemptEncryption: false` (no custom crypto)
+- ⏳ App Privacy nutrition labels (declare in App Store Connect, Day 2)
+- ⏳ iTunes Search API terms re-verify (still allows preview playback in commercial apps as of 2026)
+- 🚫 MusicKit / Spotify approvals NOT needed for v1 (we only use free iTunes previews)
+
+---
+
+## 📂 Project layout
 
 ```
-index.html              ← demo HTML prototype (iOS frame, all screens, Tweaks)
-scripts/
-  data.jsx              ← sample song catalog + hint costs + palette presets
-  ui.jsx                ← shared visual primitives (waveform, vinyl, mystery card, buttons)
-  screens.jsx           ← all 11 screens
-  App.jsx               ← state machine + Tweaks panel wiring
-frames/
-  ios-frame.jsx         ← iOS 26 device chrome
-  tweaks-panel.jsx      ← floating Tweaks shell + controls
-TODO.md                 ← this file
+ROADMAP.md            ← this file
+README.md             ← repo overview
+docs/                 ← GitHub Pages source (privacy, terms)
+app/
+  App.tsx             ← root + screen router + auth-state mirror + deep-link listener
+  app.json            ← Expo config (Bundle ID, plugins, scheme)
+  eas.json            ← EAS Build profiles
+  .env                ← Supabase URL + key (gitignored)
+  src/
+    data/catalog.json ← 2594 songs
+    lib/supabase.ts   ← Supabase client + chunked SecureStore adapter
+    state/            ← useGameState, useAuthSession, auth, preferences, blocklist, history
+    services/         ← songPicker, itunesLookup, audio helpers
+    screens/          ← all 12 screens
+    components/       ← FilmiButton, ScreenLayout, etc.
+    theme/            ← colors, radius, type
+catalog-curator/      ← localhost:7878 admin tool (verify songs, edit metadata)
 ```
 
 ---
 
-_Last updated: design phase complete · ready for handoff to engineering._
+_Last updated: 2026-05-24 — TestFlight build #5 in flight with full auth wired._

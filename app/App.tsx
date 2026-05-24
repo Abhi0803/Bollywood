@@ -1,12 +1,13 @@
 import { Component, useEffect, type ReactNode } from 'react';
 import { StatusBar } from 'expo-status-bar';
+import * as Linking from 'expo-linking';
 import * as SplashScreen from 'expo-splash-screen';
 import { SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { useAuthSession } from './src/state/useAuthSession';
 import { useGameAudio } from './src/state/useGameAudio';
 import { useGameState } from './src/state/useGameState';
-import { signOut as supabaseSignOut } from './src/state/auth';
+import { createSessionFromUrl, signOut as supabaseSignOut } from './src/state/auth';
 import { AddSongScreen } from './src/screens/AddSongScreen';
 import { BuzzedOverlay } from './src/screens/BuzzedOverlay';
 import { ConnectScreen } from './src/screens/ConnectScreen';
@@ -89,10 +90,30 @@ function AppInner() {
     if (authStatus === 'loading') return;
     if (authStatus === 'signed-in' && authUser) {
       actions.setUser(authUser);
+      // Route away from auth screens once signed in.
+      if (state.screen === 'login' || state.screen === 'splash') {
+        actions.go('home');
+      }
     } else {
       actions.setUser(null);
     }
-  }, [authStatus, authUser, actions]);
+  }, [authStatus, authUser, actions, state.screen]);
+
+  // OAuth deep-link fallback. WebBrowser.openAuthSessionAsync normally
+  // captures the redirect and we never need this — but on iOS / Expo Go
+  // the in-app browser sometimes fails to return cleanly, and iOS re-opens
+  // Expo Go via the exp:// URL instead. This listener catches that case
+  // and finishes the sign-in by parsing tokens from the URL.
+  useEffect(() => {
+    const handle = (url: string | null) => {
+      if (!url) return;
+      if (!url.includes('access_token') && !url.includes('error')) return;
+      void createSessionFromUrl(url);
+    };
+    Linking.getInitialURL().then(handle);
+    const sub = Linking.addEventListener('url', (e) => handle(e.url));
+    return () => sub.remove();
+  }, []);
 
   const currentSong = state.songDeck[state.songIdx] ?? null;
   const shouldPlay =
