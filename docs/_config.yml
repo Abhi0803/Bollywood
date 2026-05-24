@@ -1,0 +1,13 @@
+title: Naam Bolo
+description: Legal pages for the Naam Bolo Bollywood song-guessing game
+theme: jekyll-theme-cayman
+plugins:
+  - jekyll-relative-links
+relative_links:
+  enabled: true
+  collections: true
+include:
+  - CONTRIBUTING.md
+  - README.md
+  - LICENSE.md
+  - COPYING.md
