@@ -3,9 +3,15 @@ layout: default
 title: Naam Bolo
 ---
 
-# Naam Bolo
+<div align="center">
+  <img src="assets/wordmark.png" alt="Naam Bolo" width="540" />
+</div>
 
 A two-team Bollywood song-guessing party game for iOS.
+
+<div align="center" style="margin: 32px 0;">
+  <img src="assets/icon.png" alt="App icon" width="160" style="border-radius: 24px;" />
+</div>
 
 ## Legal
 
