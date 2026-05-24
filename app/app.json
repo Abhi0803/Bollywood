@@ -41,7 +41,8 @@
           "image": "./assets/splash-icon.png",
           "imageWidth": 280
         }
-      ]
+      ],
+      "expo-asset"
     ],
     "extra": {
       "eas": {
