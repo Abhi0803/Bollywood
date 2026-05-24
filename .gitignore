@@ -58,3 +58,7 @@ tools/catalog-curator/server.log
 
 # Personal Apple/dev planning notes — never push to public repo
 APPLE_TODO.md
+
+# Claude Code local config (per-developer tooling, not source)
+.claude/
+app/.claude/
