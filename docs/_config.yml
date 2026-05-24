@@ -1,13 +1,13 @@
 title: Naam Bolo
 description: Legal pages for the Naam Bolo Bollywood song-guessing game
-theme: jekyll-theme-cayman
+# No external theme — we ship a minimal _layouts/default.html with
+# system fonts. Avoids the Cayman theme's Open Sans preload warning
+# and gives us a proper favicon link tag.
 plugins:
   - jekyll-relative-links
 relative_links:
   enabled: true
   collections: true
 include:
-  - CONTRIBUTING.md
   - README.md
   - LICENSE.md
-  - COPYING.md
