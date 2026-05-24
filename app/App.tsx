@@ -3,8 +3,10 @@ import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { useAuthSession } from './src/state/useAuthSession';
 import { useGameAudio } from './src/state/useGameAudio';
 import { useGameState } from './src/state/useGameState';
+import { signOut as supabaseSignOut } from './src/state/auth';
 import { AddSongScreen } from './src/screens/AddSongScreen';
 import { BuzzedOverlay } from './src/screens/BuzzedOverlay';
 import { ConnectScreen } from './src/screens/ConnectScreen';
@@ -78,6 +80,20 @@ export default function App() {
 
 function AppInner() {
   const { state, actions } = useGameState();
+  const { status: authStatus, user: authUser } = useAuthSession();
+
+  // Mirror the Supabase auth session into our game-state's `user`. Supabase
+  // is the source of truth; this just keeps the rest of the app's screens
+  // unchanged (they read from `state.user` as before).
+  useEffect(() => {
+    if (authStatus === 'loading') return;
+    if (authStatus === 'signed-in' && authUser) {
+      actions.setUser(authUser);
+    } else {
+      actions.setUser(null);
+    }
+  }, [authStatus, authUser, actions]);
+
   const currentSong = state.songDeck[state.songIdx] ?? null;
   const shouldPlay =
     state.screen === 'playing' &&
@@ -109,15 +125,7 @@ function AppInner() {
           />
         );
       case 'login':
-        return (
-          <LoginScreen
-            onBack={() => a.go('splash')}
-            onLogin={(method, email) => {
-              a.setUser({ name: email.split('@')[0] || 'Player', email });
-              a.go(s.service ? 'home' : 'connect');
-            }}
-          />
-        );
+        return <LoginScreen onBack={() => a.go('splash')} />;
       case 'connect':
         return (
           <ConnectScreen
@@ -156,7 +164,10 @@ function AppInner() {
             service={s.service}
             onChangeService={() => a.go('connect')}
             onDisconnect={() => a.setService(null)}
-            onSignOut={() => a.signOut()}
+            onSignOut={async () => {
+              await supabaseSignOut();
+              a.signOut();
+            }}
             onBack={() => a.go('home')}
           />
         );

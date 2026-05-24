@@ -42,7 +42,8 @@
           "imageWidth": 280
         }
       ],
-      "expo-asset"
+      "expo-asset",
+      "expo-secure-store"
     ],
     "extra": {
       "eas": {
