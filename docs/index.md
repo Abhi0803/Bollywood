@@ -15,7 +15,7 @@ A two-team Bollywood song-guessing party game for iOS.
 ## Contact
 
 For privacy, support, or any questions about Naam Bolo, email:
-**naambolo.app@gmail.com**
+**jhaabhinav08@gmail.com**
 
 ---
 

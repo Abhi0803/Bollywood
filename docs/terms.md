@@ -82,7 +82,7 @@ If you obtained the App from Apple's App Store, the App Store's standard End Use
 
 If you have any questions about these Terms, contact us at:
 
-**Email:** naambolo.app@gmail.com
+**Email:** jhaabhinav08@gmail.com
 
 ---
 

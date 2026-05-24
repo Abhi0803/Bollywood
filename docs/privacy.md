@@ -87,7 +87,7 @@ We may update this Privacy Policy from time to time. Material changes will be an
 
 If you have any questions about this Privacy Policy or how the App handles data, contact us at:
 
-**Email:** naambolo.app@gmail.com
+**Email:** jhaabhinav08@gmail.com
 
 ---
 
