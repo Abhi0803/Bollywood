@@ -126,6 +126,10 @@ export function useGameState(): { state: GameState; actions: GameActions } {
       if (prefs.filters) {
         setFiltersState({ ...DEFAULT_FILTERS, ...prefs.filters });
       }
+      // Restore signed-in user + music service so we skip Login/Connect
+      // entirely on the next launch.
+      if (prefs.user) setUser(prefs.user);
+      if (prefs.service) setService(prefs.service);
       prefsLoadedRef.current = true;
     });
     return () => {
@@ -151,6 +155,18 @@ export function useGameState(): { state: GameState; actions: GameActions } {
     if (!prefsLoadedRef.current) return;
     void savePreferences({ filters });
   }, [filters]);
+
+  // Persist signed-in user across restarts (skip Login on next launch).
+  useEffect(() => {
+    if (!prefsLoadedRef.current) return;
+    void savePreferences({ user });
+  }, [user]);
+
+  // Persist linked music service similarly (skip Connect on next launch).
+  useEffect(() => {
+    if (!prefsLoadedRef.current) return;
+    void savePreferences({ service });
+  }, [service]);
 
   const markPlayed = useCallback(async (id: string) => {
     const next = await recordPlay(id);
