@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <!-- Filmi-pink → deeper-pink diagonal background -->
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ff2d6f"/>
+      <stop offset="55%" stop-color="#d61e5e"/>
+      <stop offset="100%" stop-color="#5a0f30"/>
+    </linearGradient>
+
+    <!-- Warm gold glow upper-right -->
+    <radialGradient id="goldGlow" cx="78%" cy="22%" r="55%">
+      <stop offset="0%" stop-color="#ffd166" stop-opacity="0.65"/>
+      <stop offset="100%" stop-color="#ffd166" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Eggplant glow lower-left for depth -->
+    <radialGradient id="darkGlow" cx="15%" cy="85%" r="45%">
+      <stop offset="0%" stop-color="#160828" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#160828" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Soft drop shadow for the wordmark -->
+    <filter id="textShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="8"/>
+      <feOffset dx="0" dy="8"/>
+      <feComponentTransfer><feFuncA type="linear" slope="0.45"/></feComponentTransfer>
+      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background layers -->
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <rect width="1024" height="1024" fill="url(#goldGlow)"/>
+  <rect width="1024" height="1024" fill="url(#darkGlow)"/>
+
+  <!-- Decorative vinyl-disc rings (faint, like a record spinning behind the wordmark) -->
+  <g opacity="0.13" stroke="#faf3e0" fill="none" stroke-width="2.5">
+    <circle cx="512" cy="512" r="430"/>
+    <circle cx="512" cy="512" r="360"/>
+    <circle cx="512" cy="512" r="280"/>
+  </g>
+  <!-- Vinyl centre label (subtle gold disc behind the wordmark) -->
+  <circle cx="512" cy="512" r="60" fill="#ffd166" opacity="0.18"/>
+
+  <!-- Wordmark: italic serif "Nb" in cream + a separate solid gold dot for the "." accent -->
+  <g filter="url(#textShadow)">
+    <text x="455" y="680"
+          text-anchor="middle"
+          font-family="DM Serif Display, Georgia, 'Times New Roman', serif"
+          font-style="italic"
+          font-weight="700"
+          font-size="500"
+          fill="#faf3e0">Nb</text>
+    <circle cx="730" cy="660" r="48" fill="#ffd166"/>
+  </g>
+
+  <!-- Gold accent line under the wordmark -->
+  <rect x="392" y="800" width="240" height="9" rx="4.5" fill="#ffd166"/>
+
+  <!-- "A BOLLYWOOD GAME" caption removed for icon clarity at small sizes -->
+</svg>

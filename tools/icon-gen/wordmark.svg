@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <!-- Same filmi-pink → dark-pink gradient as the app icon -->
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ff2d6f"/>
+      <stop offset="55%" stop-color="#d61e5e"/>
+      <stop offset="100%" stop-color="#5a0f30"/>
+    </linearGradient>
+    <radialGradient id="goldGlow" cx="78%" cy="22%" r="55%">
+      <stop offset="0%" stop-color="#ffd166" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#ffd166" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="darkGlow" cx="15%" cy="85%" r="45%">
+      <stop offset="0%" stop-color="#160828" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#160828" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="textShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="8"/>
+      <feOffset dx="0" dy="6"/>
+      <feComponentTransfer><feFuncA type="linear" slope="0.4"/></feComponentTransfer>
+      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background layers -->
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <rect width="1024" height="1024" fill="url(#goldGlow)"/>
+  <rect width="1024" height="1024" fill="url(#darkGlow)"/>
+
+  <!-- Faint vinyl-disc rings (subtle music motif behind the wordmark) -->
+  <g opacity="0.10" stroke="#faf3e0" fill="none" stroke-width="2.5">
+    <circle cx="512" cy="512" r="450"/>
+    <circle cx="512" cy="512" r="375"/>
+    <circle cx="512" cy="512" r="300"/>
+  </g>
+
+  <!-- Top tagline: "— A BOLLYWOOD GAME —" in gold monospace caps -->
+  <text x="512" y="335"
+        text-anchor="middle"
+        font-family="JetBrains Mono, 'Courier New', monospace"
+        font-weight="700"
+        font-size="36"
+        letter-spacing="8"
+        fill="#ffd166">— A BOLLYWOOD GAME —</text>
+
+  <!-- Main wordmark: "Naam Bolo." italic serif, cream letters + gold dot accent -->
+  <g filter="url(#textShadow)">
+    <text x="512" y="600"
+          text-anchor="middle"
+          font-family="DM Serif Display, Georgia, 'Times New Roman', serif"
+          font-style="italic"
+          font-weight="700"
+          font-size="170"
+          fill="#faf3e0">Naam Bolo<tspan fill="#ffd166">.</tspan></text>
+  </g>
+
+  <!-- Bottom strapline: short tagline in cream/dim -->
+  <text x="512" y="700"
+        text-anchor="middle"
+        font-family="Manrope, Helvetica, Arial, sans-serif"
+        font-weight="500"
+        font-size="32"
+        fill="#faf3e0"
+        opacity="0.78">Play the song. Name the movie.</text>
+
+  <!-- Gold accent rule beneath the wordmark -->
+  <rect x="412" y="745" width="200" height="6" rx="3" fill="#ffd166"/>
+</svg>
