@@ -7,22 +7,12 @@
     "icon": "./assets/icon.png",
     "scheme": "naambolo",
     "userInterfaceStyle": "dark",
-    "newArchEnabled": true,
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#160828"
-    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.abhinav.naambolo",
-      "buildNumber": "1",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "NSAppleMusicUsageDescription": "Naam Bolo plays song clips from Apple Music so players can guess the movie.",
-        "UIBackgroundModes": [
-          "audio"
-        ]
+        "NSAppleMusicUsageDescription": "Naam Bolo plays song clips from Apple Music so players can guess the movie."
       },
       "config": {
         "usesNonExemptEncryption": false
@@ -30,7 +20,6 @@
     },
     "android": {
       "package": "com.abhinav.naambolo",
-      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#ff2d6f",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -38,11 +27,7 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "edgeToEdgeEnabled": true,
-      "permissions": [
-        "android.permission.RECORD_AUDIO",
-        "android.permission.MODIFY_AUDIO_SETTINGS"
-      ]
+      "edgeToEdgeEnabled": true
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -66,6 +51,11 @@
     "runtimeVersion": {
       "policy": "appVersion"
     },
-    "owner": "abhi08nav"
+    "owner": "abhi08nav",
+    "updates": {
+      "url": "https://u.expo.dev/08d37c8e-818f-46be-828c-dcf9d2e2f5e3",
+      "enabled": false,
+      "checkAutomatically": "NEVER"
+    }
   }
 }
