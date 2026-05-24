@@ -1,5 +1,7 @@
+import { Component, useEffect, type ReactNode } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { SafeAreaView, StyleSheet, View } from 'react-native';
+import * as SplashScreen from 'expo-splash-screen';
+import { SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { useGameAudio } from './src/state/useGameAudio';
 import { useGameState } from './src/state/useGameState';
@@ -14,12 +16,67 @@ import { PlayingScreen } from './src/screens/PlayingScreen';
 import { RevealScreen } from './src/screens/RevealScreen';
 import { RoundReadyScreen } from './src/screens/RoundReadyScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
-import { SplashScreen } from './src/screens/SplashScreen';
+import { SplashScreen as AppSplashScreen } from './src/screens/SplashScreen';
 import { SummaryScreen } from './src/screens/SummaryScreen';
 import { TeamsScreen } from './src/screens/TeamsScreen';
 import { colors } from './src/theme/tokens';
 
+// Catches any render-time error from the inner app and shows it on screen
+// instead of leaving the user stuck on the native splash forever. Also
+// force-hides the splash so the error message is actually visible.
+class ErrorBoundary extends Component<
+  { children: ReactNode },
+  { error: Error | null }
+> {
+  state = { error: null as Error | null };
+
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+
+  componentDidCatch(error: Error) {
+    SplashScreen.hideAsync().catch(() => {});
+    if (__DEV__) console.error('[App ErrorBoundary]', error);
+  }
+
+  render() {
+    if (this.state.error) {
+      return (
+        <SafeAreaView style={errorStyles.root}>
+          <ScrollView contentContainerStyle={errorStyles.body}>
+            <Text style={errorStyles.heading}>App crashed at startup</Text>
+            <Text style={errorStyles.label}>Error</Text>
+            <Text style={errorStyles.message}>
+              {String((this.state.error as Error).message ?? this.state.error)}
+            </Text>
+            <Text style={errorStyles.label}>Stack</Text>
+            <Text style={errorStyles.stack}>
+              {String((this.state.error as Error).stack ?? '(no stack)')}
+            </Text>
+          </ScrollView>
+        </SafeAreaView>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export default function App() {
+  // Force-hide the native splash as soon as React mounts. Belt-and-braces
+  // against situations where the inner app fails to render and the splash
+  // would otherwise stay visible forever.
+  useEffect(() => {
+    SplashScreen.hideAsync().catch(() => {});
+  }, []);
+
+  return (
+    <ErrorBoundary>
+      <AppInner />
+    </ErrorBoundary>
+  );
+}
+
+function AppInner() {
   const { state, actions } = useGameState();
   const currentSong = state.songDeck[state.songIdx] ?? null;
   const shouldPlay =
@@ -29,8 +86,6 @@ export default function App() {
     !state.isPaused;
   const { trackId, replay } = useGameAudio(currentSong, shouldPlay);
 
-  // Combined replay: restart audio from 0 AND reset the round timer, since
-  // the 30s is the audio-playback budget, not a guess deadline.
   const replayAndResetTimer = () => {
     replay();
     actions.resetTimer();
@@ -49,7 +104,7 @@ export default function App() {
     switch (s.screen) {
       case 'splash':
         return (
-          <SplashScreen
+          <AppSplashScreen
             onStart={() => a.go(s.user ? 'home' : 'login')}
           />
         );
@@ -208,5 +263,41 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+});
+
+const errorStyles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: colors.bgDeep,
+  },
+  body: {
+    padding: 22,
+    paddingTop: 60,
+  },
+  heading: {
+    color: colors.danger,
+    fontSize: 22,
+    fontWeight: '700',
+    marginBottom: 18,
+  },
+  label: {
+    color: colors.gold,
+    fontSize: 11,
+    letterSpacing: 1.5,
+    fontWeight: '700',
+    marginTop: 14,
+    marginBottom: 4,
+  },
+  message: {
+    color: colors.ink,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  stack: {
+    color: colors.inkDim,
+    fontSize: 11,
+    fontFamily: 'Courier',
+    lineHeight: 16,
   },
 });
