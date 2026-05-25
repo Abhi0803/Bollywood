@@ -4,10 +4,29 @@ import * as Linking from 'expo-linking';
 import * as SplashScreen from 'expo-splash-screen';
 import { SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import {
+  POSTHOG_API_KEY,
+  POSTHOG_HOST,
+  PostHogProvider,
+  identify,
+  initPostHog,
+  resetPostHog,
+  track,
+} from './src/lib/posthog';
+import { initSentry, reportError, wrap } from './src/lib/sentry';
 import { useAuthSession } from './src/state/useAuthSession';
 import { useGameAudio } from './src/state/useGameAudio';
 import { useGameState } from './src/state/useGameState';
 import { createSessionFromUrl, signOut as supabaseSignOut } from './src/state/auth';
+
+// Initialize Sentry as the very first thing — before any other module
+// has a chance to throw — so the first crash on app load is captured.
+initSentry();
+
+// Initialize PostHog imperative client (the Provider below handles
+// session replay + autocapture; the imperative client lets us
+// `track()` from anywhere in the codebase).
+void initPostHog();
 import { AddSongScreen } from './src/screens/AddSongScreen';
 import { BuzzedOverlay } from './src/screens/BuzzedOverlay';
 import { ConnectScreen } from './src/screens/ConnectScreen';
@@ -39,6 +58,7 @@ class ErrorBoundary extends Component<
 
   componentDidCatch(error: Error) {
     SplashScreen.hideAsync().catch(() => {});
+    reportError(error, { source: 'AppErrorBoundary' });
     if (__DEV__) console.error('[App ErrorBoundary]', error);
   }
 
@@ -64,7 +84,7 @@ class ErrorBoundary extends Component<
   }
 }
 
-export default function App() {
+function App() {
   // Force-hide the native splash as soon as React mounts. Belt-and-braces
   // against situations where the inner app fails to render and the splash
   // would otherwise stay visible forever.
@@ -73,11 +93,31 @@ export default function App() {
   }, []);
 
   return (
-    <ErrorBoundary>
-      <AppInner />
-    </ErrorBoundary>
+    <PostHogProvider
+      apiKey={POSTHOG_API_KEY}
+      options={{
+        host: POSTHOG_HOST,
+        // Send queued events promptly so the dashboard reflects reality
+        // during testing; in production this still batches efficiently.
+        flushAt: 10,
+        flushInterval: 30000,
+      }}
+      autocapture={{
+        captureTouches: true,
+        captureScreens: true,
+      }}
+    >
+      <ErrorBoundary>
+        <AppInner />
+      </ErrorBoundary>
+    </PostHogProvider>
   );
 }
+
+// Sentry.wrap automatically captures touch events as breadcrumbs and
+// installs an error boundary at the root. Our inner ErrorBoundary still
+// renders the user-facing crash screen.
+export default wrap(App);
 
 function AppInner() {
   const { state, actions } = useGameState();
@@ -90,12 +130,17 @@ function AppInner() {
     if (authStatus === 'loading') return;
     if (authStatus === 'signed-in' && authUser) {
       actions.setUser(authUser);
+      // PostHog: link this device's prior anonymous events to the user.
+      identify(authUser.email, { name: authUser.name });
+      track('signed_in', { email_domain: authUser.email.split('@')[1] });
       // Route away from auth screens once signed in.
       if (state.screen === 'login' || state.screen === 'splash') {
         actions.go('home');
       }
     } else {
       actions.setUser(null);
+      // PostHog: forget the user so the next session is fresh.
+      resetPostHog();
     }
   }, [authStatus, authUser, actions, state.screen]);
 
@@ -114,6 +159,12 @@ function AppInner() {
     const sub = Linking.addEventListener('url', (e) => handle(e.url));
     return () => sub.remove();
   }, []);
+
+  // PostHog: track screen views. We don't use react-navigation so the
+  // Provider's `captureScreens` doesn't pick these up automatically.
+  useEffect(() => {
+    track('screen_viewed', { screen: state.screen });
+  }, [state.screen]);
 
   const currentSong = state.songDeck[state.songIdx] ?? null;
   const shouldPlay =

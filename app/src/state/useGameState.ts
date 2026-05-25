@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { HINTS, SONGS, type Song } from '../data/catalog';
 import { DEFAULT_TEAMS_BY_COUNT, type Team } from '../data/teams';
+import { track } from '../lib/posthog';
 import { addToBlocklist, loadBlocklist } from './blocklist';
 import { loadRecent, recentIds, recordPlay } from './history';
 import { loadPreferences, savePreferences } from './preferences';
@@ -210,6 +211,14 @@ export function useGameState(): { state: GameState; actions: GameActions } {
     setLastWin(null);
     setLastWasCancelled(false);
     setScreen('ready');
+    track('game_started', {
+      rounds: filters.rounds,
+      timer_seconds: filters.timer,
+      difficulty: filters.difficulty,
+      hints_enabled: filters.hintsOn,
+      era_count: filters.eras.length,
+      mood_count: filters.moods.length,
+    });
   }, [filters]);
 
   const playRound = useCallback(() => {
@@ -257,7 +266,13 @@ export function useGameState(): { state: GameState; actions: GameActions } {
     setLastWasCancelled(false);
     void markPlayed(song.id);
     setScreen('reveal');
-  }, [buzzed, computePoints, markPlayed, songDeck, songIdx, teams]);
+    track('answer_correct', {
+      round,
+      points: pts,
+      hints_used: hintsUsed.length,
+      song_era: song.era,
+    });
+  }, [buzzed, computePoints, hintsUsed.length, markPlayed, round, songDeck, songIdx, teams]);
 
   const onWrong = useCallback(() => {
     if (buzzed === null) return;
@@ -266,7 +281,8 @@ export function useGameState(): { state: GameState; actions: GameActions } {
       cur.map((t, i) => (i === teamIdx ? { ...t, score: Math.max(0, t.score - 10) } : t)),
     );
     setBuzzed(null);
-  }, [buzzed]);
+    track('answer_wrong', { round });
+  }, [buzzed, round]);
 
   const finishRoundMiss = useCallback(() => {
     const song = songDeck[songIdx];
@@ -275,12 +291,14 @@ export function useGameState(): { state: GameState; actions: GameActions } {
     setLastWasCancelled(false);
     void markPlayed(song.id);
     setScreen('reveal');
-  }, [markPlayed, songDeck, songIdx]);
+    track('round_missed', { round, song_era: song.era });
+  }, [markPlayed, round, songDeck, songIdx]);
 
   // Quit the current game — wipes round/score/history state and returns to
   // Home. Filters and team setup are preserved (those are persisted prefs).
   // Confirmation happens at the UI layer via Alert.
   const quitGame = useCallback(() => {
+    track('game_quit', { quit_at_round: round, total_rounds: filters.rounds });
     setRound(1);
     setSongIdx(0);
     setHistory([]);
@@ -292,7 +310,7 @@ export function useGameState(): { state: GameState; actions: GameActions } {
     setIsPaused(false);
     setTeamsState((cur) => cur.map((t) => ({ ...t, score: 0 })));
     setScreen('home');
-  }, []);
+  }, [filters.rounds, round]);
 
   // Cancel current round — reveal the burned song (so everyone learns the
   // answer), keep round number, take no score. Player then taps Continue
@@ -352,6 +370,15 @@ export function useGameState(): { state: GameState; actions: GameActions } {
       return;
     }
     if (round >= filters.rounds || songIdx >= songDeck.length - 1) {
+      // Track game completion + winner for funnel + retention analysis.
+      const maxScore = Math.max(...teams.map((t) => t.score));
+      const winnerCount = teams.filter((t) => t.score === maxScore).length;
+      track('game_completed', {
+        rounds: filters.rounds,
+        teams: teams.length,
+        winner_score: maxScore,
+        tie: winnerCount > 1,
+      });
       setScreen('summary');
       return;
     }
@@ -359,7 +386,7 @@ export function useGameState(): { state: GameState; actions: GameActions } {
     setSongIdx((i) => i + 1);
     setLastWin(null);
     setScreen('ready');
-  }, [filters, lastWasCancelled, round, songDeck, songIdx]);
+  }, [filters, lastWasCancelled, round, songDeck, songIdx, teams]);
 
   const revealHint = useCallback(
     (key: HintKey) => setHintsUsed((cur) => (cur.includes(key) ? cur : [...cur, key])),

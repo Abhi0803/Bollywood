@@ -1,8 +1,19 @@
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Alert, Linking, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 
 import { ScreenLayout } from '../components/ScreenLayout';
+import {
+  cancelDailyReminder,
+  hasScheduledDailyReminder,
+  requestNotificationPermission,
+  scheduleDailyReminder,
+} from '../lib/notifications';
 import type { MusicService, User } from '../state/types';
 import { colors, radius } from '../theme/tokens';
+
+// Default daily reminder time — 7 PM local time. Most people are home,
+// done with work, ready to play.
+const REMINDER_HOUR = 19;
 
 type Props = {
   user: User | null;
@@ -28,6 +39,36 @@ export function SettingsScreen({
   onSignOut,
   onBack,
 }: Props) {
+  const [reminderOn, setReminderOn] = useState(false);
+
+  // Hydrate the toggle state from whatever's actually scheduled, so it
+  // survives app restarts (notification scheduling persists at OS level).
+  useEffect(() => {
+    void hasScheduledDailyReminder().then(setReminderOn);
+  }, []);
+
+  const onToggleReminder = async (next: boolean) => {
+    if (next) {
+      const status = await requestNotificationPermission();
+      if (status !== 'granted') {
+        Alert.alert(
+          'Notifications are off',
+          'Enable notifications for Naam Bolo in iOS Settings, then try again.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Open Settings', onPress: () => Linking.openSettings() },
+          ],
+        );
+        return;
+      }
+      const ok = await scheduleDailyReminder(REMINDER_HOUR);
+      setReminderOn(ok);
+    } else {
+      await cancelDailyReminder();
+      setReminderOn(false);
+    }
+  };
+
   return (
     <ScreenLayout scroll onBack={onBack}>
       <Text style={styles.title}>Settings.</Text>
@@ -58,6 +99,21 @@ export function SettingsScreen({
           <Text style={[styles.actionText, { color: colors.danger }]}>Disconnect</Text>
         </Pressable>
       ) : null}
+
+      <Text style={styles.section}>NOTIFICATIONS</Text>
+      <View style={[styles.actionRow, { paddingVertical: 16 }]}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.actionText}>Daily reminder</Text>
+          <Text style={styles.rowSub}>Nudge at 7 PM. Today's mix is waiting.</Text>
+        </View>
+        <Switch
+          value={reminderOn}
+          onValueChange={onToggleReminder}
+          trackColor={{ false: colors.line, true: colors.filmi }}
+          thumbColor={colors.ink}
+          ios_backgroundColor={colors.line}
+        />
+      </View>
 
       <Text style={styles.section}>ACCOUNT</Text>
       <Pressable style={styles.actionRow}>
