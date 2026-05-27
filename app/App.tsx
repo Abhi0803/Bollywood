@@ -254,6 +254,7 @@ function AppInner() {
           <FiltersScreen
             filters={s.filters}
             setFilters={a.setFilters}
+            fullSongMode={useAppleMusicForPlayback}
             onStart={a.startGame}
             onBack={() => a.go('teams')}
           />

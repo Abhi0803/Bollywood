@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 
 import { Chip } from '../components/Chip';
@@ -10,19 +11,35 @@ import { colors, radius } from '../theme/tokens';
 type Props = {
   filters: Filters;
   setFilters: (u: (f: Filters) => Filters) => void;
+  fullSongMode: boolean;
   onStart: () => void;
   onBack: () => void;
 };
 
 const ROUND_OPTIONS = [5, 7, 10, 15];
-const TIMER_OPTIONS = [10, 20, 30];
+const TIMER_PREVIEW = [10, 20, 30];
+const TIMER_FULL = [15, 30, 60, 90];
 const DIFFICULTY_OPTIONS: { value: Difficulty; label: string; hint: string }[] = [
   { value: 'easy', label: 'Easy', hint: 'Iconic hits only' },
   { value: 'normal', label: 'Normal', hint: 'Mix of hits + lesser-known' },
   { value: 'hard', label: 'Hard', hint: 'Deep cuts allowed' },
 ];
 
-export function FiltersScreen({ filters, setFilters, onStart, onBack }: Props) {
+export function FiltersScreen({ filters, setFilters, fullSongMode, onStart, onBack }: Props) {
+  const timerOptions = fullSongMode ? TIMER_FULL : TIMER_PREVIEW;
+
+  // If the user switches music mode (connect / disconnect Apple Music),
+  // snap the timer to the nearest valid option so it never stays on an
+  // invisible value (e.g. 60s when only previews are available).
+  useEffect(() => {
+    if (!timerOptions.includes(filters.timer)) {
+      const closest = timerOptions.reduce((a, b) =>
+        Math.abs(b - filters.timer) < Math.abs(a - filters.timer) ? b : a,
+      );
+      setFilters((f) => ({ ...f, timer: closest }));
+    }
+  }, [fullSongMode, filters.timer, timerOptions, setFilters]);
+
   const toggle = <T extends string>(arr: T[], v: T): T[] =>
     arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v];
 
@@ -67,9 +84,11 @@ export function FiltersScreen({ filters, setFilters, onStart, onBack }: Props) {
         ))}
       </View>
 
-      <Text style={styles.section}>TIMER (per song)</Text>
+      <Text style={styles.section}>
+        TIMER (per song){fullSongMode ? '  ♫ full songs' : ''}
+      </Text>
       <View style={styles.segmented}>
-        {TIMER_OPTIONS.map((n) => (
+        {timerOptions.map((n) => (
           <Pressable
             key={n}
             onPress={() => setFilters((f) => ({ ...f, timer: n }))}
