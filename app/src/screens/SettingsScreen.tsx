@@ -116,17 +116,23 @@ export function SettingsScreen({
       </View>
 
       <Text style={styles.section}>ACCOUNT</Text>
-      <Pressable style={styles.actionRow}>
+      <Pressable
+        style={styles.actionRow}
+        onPress={() => Linking.openURL('https://abhi0803.github.io/Bollywood/privacy')}
+      >
         <Text style={styles.actionText}>Privacy & data</Text>
         <Text style={styles.caret}>›</Text>
       </Pressable>
-      <Pressable style={styles.actionRow}>
+      <Pressable
+        style={styles.actionRow}
+        onPress={() => Linking.openURL('mailto:jhaabhinav08@gmail.com?subject=Naam%20Bolo%20feedback')}
+      >
         <Text style={styles.actionText}>Help & feedback</Text>
         <Text style={styles.caret}>›</Text>
       </Pressable>
       <Pressable style={styles.actionRow}>
         <Text style={styles.actionText}>About</Text>
-        <Text style={styles.rowSub}>v0.1.0</Text>
+        <Text style={styles.rowSub}>v1.1.0</Text>
       </Pressable>
       <Pressable
         onPress={() =>

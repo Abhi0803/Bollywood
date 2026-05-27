@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Alert, Linking, StyleSheet, Text, View } from 'react-native';
 
 import { FilmiButton } from '../components/FilmiButton';
@@ -5,6 +6,7 @@ import { ScreenLayout } from '../components/ScreenLayout';
 import { TeamAvatar } from '../components/TeamAvatar';
 import type { Song } from '../data/catalog';
 import type { Team } from '../data/teams';
+import { track } from '../lib/posthog';
 import { appleMusicSongLink } from '../services/affiliate';
 import { colors, radius } from '../theme/tokens';
 
@@ -31,9 +33,30 @@ export function RevealScreen({
   isLast,
   wasCancelled,
 }: Props) {
+  const [reported, setReported] = useState(false);
+
   const openInAppleMusic = () => {
     if (!itunesTrackId) return;
     Linking.openURL(appleMusicSongLink(itunesTrackId));
+  };
+
+  const reportWrongMatch = () => {
+    // Flag this iTunes match as wrong. Lands in PostHog as a song_reported
+    // event so the catalog curator can pull the list of reported songs
+    // and re-verify each against iTunes with stricter matching.
+    track('song_reported_wrong', {
+      song_id: song.id,
+      song_name: song.song,
+      movie: song.movie,
+      year: song.year,
+      era: song.era,
+      itunes_track_id: itunesTrackId ?? null,
+    });
+    setReported(true);
+    Alert.alert(
+      'Thanks for flagging',
+      "We'll re-verify this song against iTunes in the next update.",
+    );
   };
 
   const confirmQuit = () =>
@@ -122,6 +145,13 @@ export function RevealScreen({
         variant="ghost"
         onPress={confirmQuit}
         style={{ marginTop: 10 }}
+      />
+      <FilmiButton
+        label={reported ? '✓  Flagged for review' : '⚠️  Wrong song played? Report it'}
+        variant="ghost"
+        onPress={reportWrongMatch}
+        disabled={reported}
+        style={{ marginTop: 14 }}
       />
       <FilmiButton
         label="🚫 Never play this song again"
