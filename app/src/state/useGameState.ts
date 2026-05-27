@@ -405,16 +405,19 @@ export function useGameState(): { state: GameState; actions: GameActions } {
   }, []);
 
   // Timer tick — only ticks during active playback, not while buzzed / hints
-  // overlay open / manually paused.
+  // overlay open / manually paused. When maxTime is 0 ("Full Song" mode from
+  // Apple Music), the timer is disabled — the song plays until someone buzzes
+  // or the host skips.
   useEffect(() => {
     if (screen !== 'playing' || buzzed !== null || showHints || isPaused) return;
+    if (maxTime === 0) return; // full-song mode — no countdown
     if (timeLeft <= 0) {
       finishRoundMiss();
       return;
     }
     const id = setTimeout(() => setTimeLeft((s) => s - 1), 1000);
     return () => clearTimeout(id);
-  }, [screen, timeLeft, buzzed, showHints, isPaused, finishRoundMiss]);
+  }, [screen, timeLeft, maxTime, buzzed, showHints, isPaused, finishRoundMiss]);
 
   return {
     state: {

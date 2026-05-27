@@ -64,8 +64,9 @@ export function PlayingScreen({
         { text: 'Remove it', style: 'destructive', onPress: onBlock },
       ],
     );
+  const fullSongMode = maxTime === 0;
   const pct = maxTime > 0 ? Math.max(0, Math.min(1, timeLeft / maxTime)) : 0;
-  const lowTime = timeLeft <= 10;
+  const lowTime = !fullSongMode && timeLeft <= 10;
 
   return (
     <View style={styles.root}>
@@ -78,9 +79,15 @@ export function PlayingScreen({
             Round <Text style={styles.roundNum}>{round}</Text> / {totalRounds}
           </Text>
         </View>
-        <View style={[styles.timer, lowTime && styles.timerLow]}>
-          <Text style={[styles.timerText, lowTime && { color: colors.filmi }]}>{timeLeft}</Text>
-        </View>
+        {fullSongMode ? (
+          <View style={styles.timer}>
+            <Text style={styles.timerText}>♫</Text>
+          </View>
+        ) : (
+          <View style={[styles.timer, lowTime && styles.timerLow]}>
+            <Text style={[styles.timerText, lowTime && { color: colors.filmi }]}>{timeLeft}</Text>
+          </View>
+        )}
       </View>
 
       <Text style={styles.label}>Now playing.</Text>
@@ -107,21 +114,23 @@ export function PlayingScreen({
         ) : (
           <Text style={styles.mysteryGlyph}>?</Text>
         )}
-        <View style={styles.timerBar}>
-          <View
-            style={[
-              styles.timerFill,
-              {
-                width: `${pct * 100}%`,
-                backgroundColor: isPaused
-                  ? colors.inkFaint
-                  : lowTime
-                    ? colors.filmi
-                    : colors.gold,
-              },
-            ]}
-          />
-        </View>
+        {fullSongMode ? null : (
+          <View style={styles.timerBar}>
+            <View
+              style={[
+                styles.timerFill,
+                {
+                  width: `${pct * 100}%`,
+                  backgroundColor: isPaused
+                    ? colors.inkFaint
+                    : lowTime
+                      ? colors.filmi
+                      : colors.gold,
+                },
+              ]}
+            />
+          </View>
+        )}
         <Text style={styles.waveform}>{isPaused ? '—  —  —' : '~ ~ ~ ~ ~ ~ ~'}</Text>
       </View>
 

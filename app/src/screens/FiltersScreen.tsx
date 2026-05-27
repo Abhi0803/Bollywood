@@ -18,7 +18,8 @@ type Props = {
 
 const ROUND_OPTIONS = [5, 7, 10, 15];
 const TIMER_PREVIEW = [10, 20, 30];
-const TIMER_FULL = [15, 30, 60, 90];
+// 0 = "Full Song" — no countdown, plays until someone buzzes or skips.
+const TIMER_FULL = [10, 20, 30, 0];
 const DIFFICULTY_OPTIONS: { value: Difficulty; label: string; hint: string }[] = [
   { value: 'easy', label: 'Easy', hint: 'Iconic hits only' },
   { value: 'normal', label: 'Normal', hint: 'Mix of hits + lesser-known' },
@@ -84,19 +85,24 @@ export function FiltersScreen({ filters, setFilters, fullSongMode, onStart, onBa
         ))}
       </View>
 
-      <Text style={styles.section}>
-        TIMER (per song){fullSongMode ? '  ♫ full songs' : ''}
-      </Text>
+      <Text style={styles.section}>TIMER (per song)</Text>
       <View style={styles.segmented}>
         {timerOptions.map((n) => (
           <Pressable
             key={n}
             onPress={() => setFilters((f) => ({ ...f, timer: n }))}
             style={[styles.seg, filters.timer === n && styles.segActive]}>
-            <Text style={[styles.segText, filters.timer === n && styles.segTextActive]}>{n}s</Text>
+            <Text style={[styles.segText, filters.timer === n && styles.segTextActive]}>
+              {n === 0 ? '♫ Full' : `${n}s`}
+            </Text>
           </Pressable>
         ))}
       </View>
+      {filters.timer === 0 ? (
+        <Text style={styles.difficultyHint}>
+          Song plays until someone buzzes or you skip — no countdown.
+        </Text>
+      ) : null}
 
       <Text style={styles.section}>DIFFICULTY</Text>
       <View style={styles.segmented}>
