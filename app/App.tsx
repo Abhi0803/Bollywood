@@ -163,6 +163,14 @@ function AppInner() {
     !state.showHints &&
     !state.isPaused;
   const apple = useAppleMusic();
+  // Re-check Apple Music status when the user connects/disconnects via
+  // ConnectScreen. Without this, AppInner's hook instance wouldn't know
+  // about authorization changes made in ConnectScreen's separate instance.
+  useEffect(() => {
+    if (state.service === 'apple') {
+      void apple.refresh();
+    }
+  }, [state.service]);
   const useAppleMusicForPlayback =
     state.service === 'apple' && apple.canPlayFull;
   const { trackId, replay } = useGameAudio(
