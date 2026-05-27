@@ -52,9 +52,10 @@ public class NaamMusicModule: Module {
       Task {
         do {
           var req = MusicCatalogSearchRequest(term: query, types: [Song.self])
-          req.limit = max(1, min(limit, 25))
+          let clamped = max(1, min(limit, 25))
+          req.limit = clamped
           let response = try await req.response()
-          let results: [[String: Any?]] = response.songs.prefix(req.limit).map { song in
+          let results: [[String: Any?]] = response.songs.prefix(clamped).map { song in
             return [
               "id": song.id.rawValue,
               "title": song.title,
