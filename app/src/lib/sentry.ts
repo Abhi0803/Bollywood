@@ -27,6 +27,16 @@ export function initSentry() {
     // Don't swallow errors — let our ErrorBoundary still render the
     // crash screen. Sentry just observes.
     enableAutoSessionTracking: true,
+    // Drop WatchdogTermination at the SDK level. iOS raises these for
+    // many non-actionable reasons (memory pressure when backgrounded,
+    // user force-quit racing the OS, transient hangs). Individual events
+    // are noise; a real RAM regression would show as a sustained spike
+    // we'd notice via crash-free-users in the Releases tab regardless.
+    beforeSend(event) {
+      const type = event.exception?.values?.[0]?.type;
+      if (type === 'WatchdogTermination') return null;
+      return event;
+    },
   });
 }
 
