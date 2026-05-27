@@ -36,6 +36,9 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 
-# generated native folders
+# generated native folders (from expo prebuild; never committed)
 /ios
 /android
+# Exception: local Expo Modules' native sources ARE source code we ship.
+!/modules/*/ios/
+!/modules/*/android/

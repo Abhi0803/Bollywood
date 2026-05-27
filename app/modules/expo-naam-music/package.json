@@ -1,0 +1,8 @@
+{
+  "name": "expo-naam-music",
+  "version": "0.1.0",
+  "description": "Local Expo Module wrapping Apple MusicKit for Naam Bolo (auth, subscription, full-track playback, catalog search).",
+  "main": "index.ts",
+  "types": "index.ts",
+  "private": true
+}

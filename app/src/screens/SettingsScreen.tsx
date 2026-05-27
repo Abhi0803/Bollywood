@@ -132,7 +132,7 @@ export function SettingsScreen({
       </Pressable>
       <Pressable style={styles.actionRow}>
         <Text style={styles.actionText}>About</Text>
-        <Text style={styles.rowSub}>v1.1.0</Text>
+        <Text style={styles.rowSub}>v1.2.0</Text>
       </Pressable>
       <Pressable
         onPress={() =>

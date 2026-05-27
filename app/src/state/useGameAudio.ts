@@ -2,7 +2,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAudioPlayer } from 'expo-audio';
 
 import type { Song } from '../data/catalog';
+import { NaamMusic } from '../../modules/expo-naam-music';
 import { lookupTrack } from '../services/itunesLookup';
+import { findAppleMusicId } from '../services/appleMusicLookup';
+import { track as trackEvent } from '../lib/posthog';
 
 // 1-frame silent WAV — used as the "neutral" source so the player never
 // holds a stale preview URL while we're between songs.
@@ -19,84 +22,126 @@ const SILENT_WAV =
 //     looked up. If a player buzzes in that window, the Reveal answer
 //     doesn't match what they heard.
 //
-// Fixes applied below:
-//   1. On any song change, IMMEDIATELY pause + load the silent WAV, so a
-//      stray play() can't play the previous preview.
-//   2. Bump a monotonic generation counter so out-of-order iTunes lookup
-//      responses can't overwrite the current song's metadata.
-//   3. Gate the play effect on loadedForSongIdRef matching currentSong — we
-//      only ever play audio that was loaded for the song currently on screen.
+// Apple Music branch (added with NaamMusicModule):
+//   - When `useAppleMusic` is true AND the song resolves to an Apple Music
+//     catalog ID, we play the FULL song via ApplicationMusicPlayer.
+//   - Otherwise we fall back to the existing iTunes preview path.
+//   - iTunes lookup still happens regardless (the Reveal screen's "Open in
+//     Apple Music" link uses the iTunes track ID).
 
-export function useGameAudio(currentSong: Song | null, shouldPlay: boolean) {
+type PlaybackMode = 'idle' | 'preview' | 'apple-music';
+
+export function useGameAudio(
+  currentSong: Song | null,
+  shouldPlay: boolean,
+  useAppleMusic: boolean = false,
+) {
   const player = useAudioPlayer(SILENT_WAV);
   const [trackId, setTrackId] = useState<number | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [appleId, setAppleId] = useState<string | null>(null);
+  const [mode, setMode] = useState<PlaybackMode>('idle');
   const [looking, setLooking] = useState(false);
 
-  // Tracks "which song's preview is currently loaded into the player." The
-  // play effect refuses to start playback unless this matches currentSong.id.
+  // Tracks "which song's playback is currently loaded." The play effect
+  // refuses to start playback unless this matches currentSong.id.
   const loadedForSongIdRef = useRef<string | null>(null);
   // Monotonic counter so we can identify and discard stale lookup responses.
   const lookupGenRef = useRef(0);
 
-  // Look up the preview URL when the song changes.
+  // Look up the preview URL + (optionally) Apple Music catalog ID when
+  // the song changes.
   useEffect(() => {
     if (!currentSong) return;
     if (loadedForSongIdRef.current === currentSong.id) return;
 
     const myGen = ++lookupGenRef.current;
 
-    // Hard reset the audio engine FIRST so the previous song's preview can't
-    // bleed into the new song's round.
+    // Hard reset BOTH audio engines so the previous song can't bleed in.
     player.pause();
     player.replace(SILENT_WAV);
+    void NaamMusic.stop().catch(() => {});
 
     setPreviewUrl(null);
     setTrackId(null);
+    setAppleId(null);
+    setMode('idle');
     setLooking(true);
 
-    lookupTrack(currentSong)
-      .then((track) => {
+    const itunesPromise = lookupTrack(currentSong);
+    const applePromise = useAppleMusic
+      ? findAppleMusicId(currentSong)
+      : Promise.resolve(null);
+
+    Promise.all([itunesPromise, applePromise])
+      .then(([track, foundAppleId]) => {
         if (myGen !== lookupGenRef.current) return; // a newer lookup took over
+
         if (track && track.previewUrl) {
           player.replace(track.previewUrl);
-          loadedForSongIdRef.current = currentSong.id;
           setPreviewUrl(track.previewUrl);
           setTrackId(track.trackId);
-        } else {
-          // No preview found — leave the player on silent so the round just
-          // runs out instead of accidentally playing the previous song.
-          loadedForSongIdRef.current = currentSong.id;
         }
+        setAppleId(foundAppleId);
+
+        if (foundAppleId) {
+          setMode('apple-music');
+        } else if (track && track.previewUrl) {
+          setMode('preview');
+        } else {
+          setMode('idle');
+        }
+
+        loadedForSongIdRef.current = currentSong.id;
       })
       .finally(() => {
         if (myGen === lookupGenRef.current) setLooking(false);
       });
-  }, [currentSong, player]);
+  }, [currentSong, player, useAppleMusic]);
 
-  // Play/pause based on shouldPlay. We deliberately also check that the
-  // currently-loaded preview is for currentSong; otherwise we'd start the
-  // previous song's preview before the new lookup finishes.
+  // Play/pause based on shouldPlay. Branches between Apple Music and
+  // expo-audio preview based on what was resolved for this song.
   useEffect(() => {
     if (!currentSong) return;
-    if (!previewUrl) return;
     if (loadedForSongIdRef.current !== currentSong.id) return;
-    if (shouldPlay) {
-      player.play();
-    } else {
-      player.pause();
-    }
-  }, [shouldPlay, previewUrl, currentSong, player]);
 
-  // Seek to start and play — for the "Replay clip" button. Same gating as
-  // the play effect so we never replay the previous song.
+    if (shouldPlay) {
+      if (mode === 'apple-music' && appleId) {
+        trackEvent('audio_play_started', { source: 'apple-music', song_id: currentSong.id });
+        void NaamMusic.play(appleId).catch((err) => {
+          trackEvent('apple_music_play_failed', {
+            song_id: currentSong.id,
+            error: String(err?.message ?? err),
+          });
+          if (previewUrl) {
+            setMode('preview');
+            player.play();
+          }
+        });
+      } else if (mode === 'preview' && previewUrl) {
+        trackEvent('audio_play_started', { source: 'preview', song_id: currentSong.id });
+        player.play();
+      }
+    } else {
+      if (mode === 'apple-music') {
+        void NaamMusic.pause().catch(() => {});
+      } else {
+        player.pause();
+      }
+    }
+  }, [shouldPlay, mode, appleId, previewUrl, currentSong, player]);
+
+  // Replay clip — same gating as the play effect.
   const replay = useCallback(() => {
     if (!currentSong) return;
-    if (!previewUrl) return;
     if (loadedForSongIdRef.current !== currentSong.id) return;
-    player.seekTo(0);
-    player.play();
-  }, [player, previewUrl, currentSong]);
+    if (mode === 'apple-music' && appleId) {
+      void NaamMusic.play(appleId).catch(() => {});
+    } else if (mode === 'preview' && previewUrl) {
+      player.seekTo(0);
+      player.play();
+    }
+  }, [player, previewUrl, currentSong, mode, appleId]);
 
   return { trackId, previewUrl, looking, replay };
 }

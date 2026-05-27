@@ -12,6 +12,7 @@ import {
   track,
 } from './src/lib/posthog';
 import { initSentry, reportError, wrap } from './src/lib/sentry';
+import { useAppleMusic } from './src/state/useAppleMusic';
 import { useAuthSession } from './src/state/useAuthSession';
 import { useGameAudio } from './src/state/useGameAudio';
 import { useGameState } from './src/state/useGameState';
@@ -161,7 +162,14 @@ function AppInner() {
     state.buzzed === null &&
     !state.showHints &&
     !state.isPaused;
-  const { trackId, replay } = useGameAudio(currentSong, shouldPlay);
+  const apple = useAppleMusic();
+  const useAppleMusicForPlayback =
+    state.service === 'apple' && apple.canPlayFull;
+  const { trackId, replay } = useGameAudio(
+    currentSong,
+    shouldPlay,
+    useAppleMusicForPlayback,
+  );
 
   const replayAndResetTimer = () => {
     replay();

@@ -1,8 +1,10 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { FilmiButton } from '../components/FilmiButton';
 import { ScreenLayout } from '../components/ScreenLayout';
+import { track } from '../lib/posthog';
+import { useAppleMusic } from '../state/useAppleMusic';
 import type { MusicService } from '../state/types';
 import { colors, radius } from '../theme/tokens';
 
@@ -15,7 +17,78 @@ type Props = {
 };
 
 export function ConnectScreen({ currentService, onConnect, onBack }: Props) {
-  const [tier, setTier] = useState<Tier>(currentService === '30s' || currentService === null ? 'free' : 'pro');
+  const [tier, setTier] = useState<Tier>(
+    currentService === '30s' || currentService === null ? 'free' : 'pro',
+  );
+  const apple = useAppleMusic();
+
+  const onConnectAppleMusic = async () => {
+    track('apple_music_connect_tapped');
+    const status =
+      apple.status === 'authorized'
+        ? apple.status
+        : await apple.connect();
+
+    if (status === 'denied' || status === 'restricted') {
+      track('apple_music_connect_denied', { status });
+      Alert.alert(
+        'Apple Music access denied',
+        'To play full songs, enable Apple Music access for Naam Bolo in iOS Settings.',
+        [
+          { text: 'Not now', style: 'cancel' },
+          { text: 'Open Settings', onPress: () => Linking.openSettings() },
+        ],
+      );
+      return;
+    }
+
+    if (status !== 'authorized') {
+      track('apple_music_connect_other', { status });
+      return;
+    }
+
+    // Authorized — now confirm the user can actually play catalog content
+    // (i.e. has an active Apple Music subscription).
+    await apple.refresh();
+    if (!apple.canPlayFull) {
+      track('apple_music_no_subscription');
+      Alert.alert(
+        'Apple Music subscription needed',
+        'We can connect to your account, but full-song playback needs an active Apple Music subscription. Without one, Naam Bolo will keep playing 30-second previews.',
+        [
+          { text: 'Use previews', onPress: () => onConnect('30s') },
+          {
+            text: 'Get Apple Music',
+            onPress: () => Linking.openURL('https://music.apple.com/subscribe'),
+          },
+        ],
+      );
+      return;
+    }
+
+    track('apple_music_connected');
+    onConnect('apple');
+  };
+
+  const appleStatusCopy = () => {
+    if (apple.checking) return 'Checking your Apple Music…';
+    if (apple.status === 'authorized' && apple.canPlayFull)
+      return '✓ Apple Music connected · full songs ready';
+    if (apple.status === 'authorized' && !apple.canPlayFull)
+      return 'Authorized but no active subscription — previews will be used.';
+    if (apple.status === 'denied' || apple.status === 'restricted')
+      return 'Access blocked. Enable in iOS Settings → Naam Bolo.';
+    return 'Tap to authorize Naam Bolo to play from your Apple Music library.';
+  };
+
+  const appleButtonLabel = () => {
+    if (apple.checking) return 'Checking…';
+    if (currentService === 'apple' && apple.canPlayFull)
+      return 'Apple Music connected ✓';
+    if (apple.status === 'authorized' && apple.canPlayFull)
+      return 'Use Apple Music';
+    return 'Connect Apple Music';
+  };
 
   return (
     <ScreenLayout scroll onBack={onBack}>
@@ -76,14 +149,12 @@ export function ConnectScreen({ currentService, onConnect, onBack }: Props) {
                 <Text style={[styles.tagText, { color: '#160828' }]}>RECOMMENDED</Text>
               </View>
             </View>
-            <Text style={styles.proNote}>
-              ⏳ Pending Apple MusicKit entitlement (1–2 wk review). Once approved this lights up.
-            </Text>
+            <Text style={styles.proNote}>{appleStatusCopy()}</Text>
             <FilmiButton
-              label="Notify me when ready"
-              variant="ghost"
-              onPress={() => {}}
-              disabled
+              label={appleButtonLabel()}
+              variant="primary"
+              onPress={onConnectAppleMusic}
+              disabled={apple.checking || (currentService === 'apple' && apple.canPlayFull)}
               style={{ marginTop: 12 }}
             />
           </View>
