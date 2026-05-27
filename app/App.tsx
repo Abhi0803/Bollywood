@@ -5,8 +5,6 @@ import * as SplashScreen from 'expo-splash-screen';
 import { SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import {
-  POSTHOG_API_KEY,
-  POSTHOG_HOST,
   PostHogProvider,
   identify,
   initPostHog,
@@ -23,10 +21,9 @@ import { createSessionFromUrl, signOut as supabaseSignOut } from './src/state/au
 // has a chance to throw — so the first crash on app load is captured.
 initSentry();
 
-// Initialize PostHog imperative client (the Provider below handles
-// session replay + autocapture; the imperative client lets us
-// `track()` from anywhere in the codebase).
-void initPostHog();
+// Initialize PostHog once. The same instance powers both the Provider
+// (autocapture + breadcrumbs) and the imperative `track()` helper.
+const posthog = initPostHog();
 import { AddSongScreen } from './src/screens/AddSongScreen';
 import { BuzzedOverlay } from './src/screens/BuzzedOverlay';
 import { ConnectScreen } from './src/screens/ConnectScreen';
@@ -94,17 +91,9 @@ function App() {
 
   return (
     <PostHogProvider
-      apiKey={POSTHOG_API_KEY}
-      options={{
-        host: POSTHOG_HOST,
-        // Send queued events promptly so the dashboard reflects reality
-        // during testing; in production this still batches efficiently.
-        flushAt: 10,
-        flushInterval: 30000,
-      }}
+      client={posthog}
       autocapture={{
         captureTouches: true,
-        captureScreens: true,
       }}
     >
       <ErrorBoundary>

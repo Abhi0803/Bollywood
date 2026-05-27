@@ -16,37 +16,35 @@ const POSTHOG_HOST = 'https://us.i.posthog.com';
 // like booleans, ids, counts.
 export type EventProps = Record<string, string | number | boolean | null>;
 
-// Singleton client for imperative calls outside the React tree
-// (e.g., inside reducers, async callbacks).
+// Single PostHog client shared by both <PostHogProvider> (for autocapture
+// + breadcrumbs) and imperative track() calls. Previously we instantiated
+// two clients — the Provider's internal one (via apiKey prop) and a second
+// one here — which doubled every network call (config/flags/batch) and
+// every in-memory queue. initPostHog() is idempotent: call it once at app
+// boot, pass the returned client to <PostHogProvider client={...}>.
 let posthogClient: PostHog | null = null;
 
-export async function initPostHog() {
-  if (posthogClient) return posthogClient;
-  posthogClient = new PostHog(POSTHOG_API_KEY, {
-    host: POSTHOG_HOST,
-    // Send events as soon as we have ≥10 queued OR every 30s.
-    flushAt: 10,
-    flushInterval: 30000,
-  });
+export function initPostHog(): PostHog {
+  if (!posthogClient) {
+    posthogClient = new PostHog(POSTHOG_API_KEY, {
+      host: POSTHOG_HOST,
+      flushAt: 10,
+      flushInterval: 30000,
+    });
+  }
   return posthogClient;
 }
 
-// Track an event. Falls back to no-op if PostHog hasn't initialized yet
-// (which should never happen if App.tsx wires it up at mount).
 export function track(event: string, properties?: EventProps) {
   if (!posthogClient) return;
   posthogClient.capture(event, properties);
 }
 
-// Identify a user once they sign in. PostHog will associate prior
-// anonymous events with this user.
 export function identify(userId: string, traits?: EventProps) {
   if (!posthogClient) return;
   posthogClient.identify(userId, traits);
 }
 
-// Reset on sign-out so the next user's events don't get attributed
-// to the previous account.
 export function resetPostHog() {
   if (!posthogClient) return;
   posthogClient.reset();
