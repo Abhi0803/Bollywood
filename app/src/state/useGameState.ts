@@ -404,20 +404,18 @@ export function useGameState(): { state: GameState; actions: GameActions } {
     setScreen('splash');
   }, []);
 
-  // Timer tick — only ticks during active playback, not while buzzed / hints
-  // overlay open / manually paused. When maxTime is 0 ("Full Song" mode from
-  // Apple Music), the timer is disabled — the song plays until someone buzzes
-  // or the host skips.
+  // Timer tick — counts down during active playback, pauses while buzzed /
+  // hints overlay open / manually paused. When maxTime is 0 ("Full Song"
+  // mode), the timer is disabled entirely. When the countdown reaches 0 in
+  // timed mode, the round does NOT auto-end — the host can replay the clip,
+  // players can still buzz, or the host can skip/cancel/quit manually.
   useEffect(() => {
     if (screen !== 'playing' || buzzed !== null || showHints || isPaused) return;
     if (maxTime === 0) return; // full-song mode — no countdown
-    if (timeLeft <= 0) {
-      finishRoundMiss();
-      return;
-    }
+    if (timeLeft <= 0) return; // clip ended — round stays active
     const id = setTimeout(() => setTimeLeft((s) => s - 1), 1000);
     return () => clearTimeout(id);
-  }, [screen, timeLeft, maxTime, buzzed, showHints, isPaused, finishRoundMiss]);
+  }, [screen, timeLeft, maxTime, buzzed, showHints, isPaused]);
 
   return {
     state: {

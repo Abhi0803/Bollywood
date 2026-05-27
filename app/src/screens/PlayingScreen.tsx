@@ -65,8 +65,9 @@ export function PlayingScreen({
       ],
     );
   const fullSongMode = maxTime === 0;
+  const clipEnded = !fullSongMode && timeLeft <= 0;
   const pct = maxTime > 0 ? Math.max(0, Math.min(1, timeLeft / maxTime)) : 0;
-  const lowTime = !fullSongMode && timeLeft <= 10;
+  const lowTime = !fullSongMode && !clipEnded && timeLeft <= 10;
 
   return (
     <View style={styles.root}>
@@ -83,6 +84,10 @@ export function PlayingScreen({
           <View style={styles.timer}>
             <Text style={styles.timerText}>♫</Text>
           </View>
+        ) : clipEnded ? (
+          <Pressable onPress={onReplay} style={styles.timer} hitSlop={10}>
+            <Text style={styles.timerText}>🔁</Text>
+          </Pressable>
         ) : (
           <View style={[styles.timer, lowTime && styles.timerLow]}>
             <Text style={[styles.timerText, lowTime && { color: colors.filmi }]}>{timeLeft}</Text>
