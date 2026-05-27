@@ -15,9 +15,6 @@
         "ITSAppUsesNonExemptEncryption": false,
         "NSAppleMusicUsageDescription": "Naam Bolo connects to Apple Music so subscribers can play full songs instead of 30-second previews."
       },
-      "entitlements": {
-        "com.apple.developer.musickit": true
-      },
       "config": {
         "usesNonExemptEncryption": false
       }
