@@ -3,6 +3,7 @@ import { Alert, Linking, Pressable, StyleSheet, Text, View } from 'react-native'
 
 import { FilmiButton } from '../components/FilmiButton';
 import { ScreenLayout } from '../components/ScreenLayout';
+import { NaamMusic } from '../../modules/expo-naam-music';
 import { track } from '../lib/posthog';
 import { useAppleMusic } from '../state/useAppleMusic';
 import type { MusicService } from '../state/types';
@@ -47,10 +48,10 @@ export function ConnectScreen({ currentService, onConnect, onBack }: Props) {
       return;
     }
 
-    // Authorized — now confirm the user can actually play catalog content
-    // (i.e. has an active Apple Music subscription).
-    await apple.refresh();
-    if (!apple.canPlayFull) {
+    // Authorized — check subscription directly from native (not from hook
+    // state, which is async and may not have re-rendered yet).
+    const canPlay = await NaamMusic.canPlayCatalogContent();
+    if (!canPlay) {
       track('apple_music_no_subscription');
       Alert.alert(
         'Apple Music subscription needed',
