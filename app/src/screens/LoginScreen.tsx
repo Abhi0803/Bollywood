@@ -8,11 +8,12 @@ import { colors, radius } from '../theme/tokens';
 
 type Props = {
   onBack: () => void;
+  onSkip: () => void;
 };
 
 type Stage = 'enter-email' | 'enter-code' | 'submitting';
 
-export function LoginScreen({ onBack }: Props) {
+export function LoginScreen({ onBack, onSkip }: Props) {
   const [stage, setStage] = useState<Stage>('enter-email');
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
@@ -151,6 +152,23 @@ export function LoginScreen({ onBack }: Props) {
             style={{ marginTop: 12 }}
           />
 
+          <View style={styles.dividerRow}>
+            <View style={styles.divider} />
+            <Text style={styles.or}>OR</Text>
+            <View style={styles.divider} />
+          </View>
+
+          <FilmiButton
+            label="Skip · Play as guest"
+            variant="ghost"
+            onPress={onSkip}
+            disabled={stage === 'submitting'}
+          />
+          <Text style={styles.guestNote}>
+            Jump straight into a game. Sign in later if you want to save scores
+            across devices.
+          </Text>
+
           <Text style={styles.tos}>
             By continuing you agree to the Terms and Privacy Policy at{'\n'}
             abhi0803.github.io/Bollywood
@@ -185,5 +203,6 @@ const styles = StyleSheet.create({
     fontVariant: ['tabular-nums'],
   },
   error: { color: colors.danger, fontSize: 13, marginTop: 10 },
+  guestNote: { color: colors.inkDim, fontSize: 12, marginTop: 8, textAlign: 'center', lineHeight: 16 },
   tos: { color: colors.inkFaint, fontSize: 11, marginTop: 18, textAlign: 'center', lineHeight: 16 },
 });

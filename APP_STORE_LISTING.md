@@ -142,21 +142,55 @@ If email sign-in must be tested instead, contact us at jhaabhinav08@gmail.com an
 ```
 Naam Bolo is a Bollywood song-guessing party game for two teams.
 
-SIGN-IN
-The app requires sign-in. Easiest path: tap "Continue with Apple" on the Login screen — uses the reviewer's own Apple ID. Alternatively, "Continue with Google" or email OTP work.
+— ADDRESSING THE 2026-05-27 REJECTION (v1.2 resubmission) —
 
-HOW TO TEST THE GAMEPLAY
-1. Sign in (use Apple Sign In — fastest)
-2. On Home, tap "New Game"
-3. Default 2 teams are pre-filled — tap Continue
-4. On Filters, default era/mood selections are fine — tap "Start Game"
-5. Tap "Play" to start round 1 — a 30-second Bollywood song clip plays from iTunes Search API previews
-6. Tap any team's name to simulate that team buzzing in
-7. On the Buzzed overlay, tap "Correct" or "Wrong" — Correct banks the points, Wrong gives the other team a chance
-8. After 5 rounds, the Summary screen shows the winner
+5.1.1 (Privacy / Data Collection):
+Sign-in is now OPTIONAL. The Login screen has a "Skip · Play as guest" button
+that takes the user straight into gameplay with no account. Sign-in remains
+available for users who want optional cross-device score sync, but it is no
+longer required to play. Reviewers can test the entire game as a guest.
 
-CONTENT
-The 2500+ song catalog ships embedded with the app (JSON). Audio plays from iTunes Search API previews (https://itunes.apple.com/search) — no music subscription needed.
+5.2.3 (Audio/Video Downloading):
+The app does NOT download, save, host, or distribute any audio. It is purely a
+streaming consumer of Apple's own public APIs:
+  * 30-second previews: streamed (not downloaded) from Apple's iTunes Search
+    API (https://itunes.apple.com/search) — documented, free for any app to
+    use, no authentication required. Apple's Affiliate Program ToS explicitly
+    permits preview playback in third-party apps.
+  * Full songs (v1.2, optional): streamed via Apple's MusicKit framework
+    through the user's own Apple Music subscription. Standard Apple SDK use,
+    no DRM bypass, no caching beyond MusicKit's own internal handling.
+  * "Add song" feature stores TEXT METADATA only (title/movie/year/director).
+    Users cannot upload audio files.
+  * "Block this song" stores a song ID in local JSON. No audio involved.
+  * expo-file-system writes are limited to: prefs, blocklist, user-added
+    song metadata, play history. No audio files ever touch the file system.
+
+— HOW TO TEST —
+
+GUEST MODE (no account required, fastest):
+1. Launch the app, tap "Get started" on splash
+2. On the Login screen, tap "Skip · Play as guest"
+3. On Home, tap "New Game" → continue with default teams + filters → Start
+4. Round 1 plays a 30-second Bollywood song clip from iTunes Search API
+5. Tap any team's name to simulate that team buzzing in
+6. On the Buzzed overlay, tap "Correct" or "Wrong"
+7. After 5 rounds, Summary screen shows the winner
+
+SIGN-IN (only if reviewing the optional account features):
+"Continue with Apple" on Login screen — uses reviewer's Apple ID. Or
+"Continue with Google" or email OTP.
+
+APPLE MUSIC FULL SONGS (v1.2, optional):
+Settings → Change music source → Full song tab → Connect Apple Music.
+Requires the reviewer to have an active Apple Music subscription on the
+test device. If not subscribed, the app stays on the 30-second preview
+path — which is the default for all users.
+
+— CONTENT LICENSING SUMMARY —
+* 30s previews: Apple iTunes Search API — public, free, documented.
+* Apple Music full tracks: MusicKit framework — user's own subscription.
+* Song catalog (2594 entries): hand-curated metadata only.
 
 CONTACT
 jhaabhinav08@gmail.com

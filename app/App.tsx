@@ -202,7 +202,15 @@ function AppInner() {
           />
         );
       case 'login':
-        return <LoginScreen onBack={() => a.go('splash')} />;
+        return (
+          <LoginScreen
+            onBack={() => a.go('splash')}
+            onSkip={() => {
+              track('guest_mode_entered');
+              a.go('home');
+            }}
+          />
+        );
       case 'connect':
         return (
           <ConnectScreen
