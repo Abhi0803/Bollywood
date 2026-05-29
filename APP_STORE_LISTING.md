@@ -89,50 +89,102 @@ Avoid: words already in the title (`naam`, `bolo`), competitor app names, brand 
 
 ---
 
-## App Privacy — Nutrition Labels
+## App Privacy — Nutrition Labels (UPDATED for v1.2.1)
 
-Apple's questionnaire walks you through this. Exact answers for Naam Bolo:
+These labels MUST match what the app actually does. The original v1.0 list
+was incomplete — v1.1 added Sentry (crash data) + PostHog (analytics),
+v1.2 added Apple Music. Updated table below.
 
 ### Data Types Collected
 
 **☑ Contact Info → Email Address**
-- Purpose: App Functionality
+- Sources: Supabase auth (Apple/Google/email sign-in)
+- Purposes: **App Functionality**, **Analytics** (PostHog `identify`)
 - Linked to user: **Yes**
 - Used for tracking: **No**
 
-**☑ User Content → Other User Content (name)**
-- Purpose: App Functionality
+**☑ User Content → Other User Content** *(display name)*
+- Sources: Apple / Google sign-in (only when granted)
+- Purpose: **App Functionality**
 - Linked to user: **Yes**
 - Used for tracking: **No**
 
 **☑ Identifiers → User ID**
-- Purpose: App Functionality
+- Sources: Supabase auth user UUID, PostHog distinct ID
+- Purposes: **App Functionality**, **Analytics**
 - Linked to user: **Yes**
+- Used for tracking: **No**
+
+**☑ Diagnostics → Crash Data** *(Sentry)*
+- Source: Sentry SDK on uncaught exceptions / native crashes
+- Purpose: **App Functionality** (debugging)
+- Linked to user: **No** (we do NOT send the email/name on crashes)
+- Used for tracking: **No**
+
+**☑ Diagnostics → Performance Data** *(Sentry release health)*
+- Source: Sentry auto-session-tracking
+- Purpose: **App Functionality**
+- Linked to user: **No**
+- Used for tracking: **No**
+
+**☑ Usage Data → Product Interaction** *(PostHog)*
+- Source: PostHog autocapture (touches) + manual `track()` calls
+  for game events: game_started, audio_play_started, signed_in,
+  apple_music_connected, song_reported_wrong, guest_mode_entered,
+  account_deleted, etc.
+- Purpose: **Analytics**
+- Linked to user: **Yes** if signed in, **No** in guest mode
 - Used for tracking: **No**
 
 ### NOT collected
 
-- Location, Health, Financial Info, Sensitive Info, Browsing History, Search History, Diagnostics, Usage Data, Photos, Videos, Audio Data, Contacts.
+- Location, Health, Financial Info, Sensitive Info, Browsing History,
+  Search History, Photos, Videos, **Audio Data**, Contacts, Sensitive
+  Info, Other Data Types. The app never accesses microphone, camera,
+  GPS, contacts, or photos.
 
 ### Tracking
 
-**No** — the app does not track users across apps owned by other companies.
+**No** — the app does not track users across other companies' apps or
+websites. No advertising SDKs. No IDFA. No third-party tracking pixels.
 
-### Third Parties
+### Third Parties (data processors)
 
-Disclose that Supabase is used for authentication/session storage. (Apple doesn't require listing this in the nutrition label, but if asked in review notes, mention it.)
+For reference in review notes if asked; Apple's nutrition label doesn't
+explicitly ask for these:
+- **Supabase** (Mumbai, ap-south-1) — authentication, session storage,
+  account deletion RPC
+- **Resend** (US) — magic-link / OTP email delivery
+- **Sentry** (US) — crash reports
+- **PostHog** (US) — product analytics
+- **Apple** (iTunes Search API + MusicKit) — song previews and full songs
 
 ---
 
-## Demo Account for App Review
+## Demo Account for App Review (v1.2.1)
 
-Apple reviewers need to sign in to test the app. Easiest path: use **Apple Sign In** — reviewers all have Apple IDs, no demo account needed.
+**Sign-in is now OPTIONAL** — reviewers can test the entire app via
+"Skip · Play as guest" on the Login screen. No demo account needed for
+core functionality.
 
-Provide in review notes:
+For testing the account-deletion flow (5.1.1(v)), the reviewer can use
+**"Continue with Apple"** which creates an account from their own Apple ID
+in seconds. After signing in, Settings → Delete account removes it. The
+reviewer's Apple ID is unaffected — only Naam Bolo's own account row is
+deleted.
+
+Provide in App Store Connect → "Sign-In Required" → **No** if it asks,
+and in the Demo Account field:
 ```
-DEMO ACCOUNT: Not required — use "Continue with Apple" on the Login screen to sign in instantly with the reviewer's own Apple ID.
+DEMO ACCOUNT: Not required.
+Sign-in is optional. Use "Skip · Play as guest" on the Login screen
+for full gameplay without an account.
 
-If email sign-in must be tested instead, contact us at jhaabhinav08@gmail.com and we will provide a working email OTP test account.
+To test account creation + deletion (5.1.1(v) compliance), use
+"Continue with Apple" — uses reviewer's own Apple ID. Then Settings
+→ Delete account.
+
+Email OTP test account available on request — email jhaabhinav08@gmail.com.
 ```
 
 ---
@@ -268,16 +320,21 @@ Support / Marketing: https://abhi0803.github.io/Bollywood/
 | 5.5" iPhone | 1242 × 2208 | optional | — |
 | iPad | only if `supportsTablet: true` | — | — |
 
-**Recommended 8 screenshots (in this order — App Store shows the first 3 prominently):**
+**Recommended 8 screenshots for v1.2.1 (App Store shows the first 3 prominently):**
 
-1. **Hero shot** — Playing screen with vinyl + timer, mid-round
-2. **Sign-in** — Login screen with three auth options
-3. **Home** — Welcome screen, "New Game" button visible
-4. **Teams setup** — 2 teams with custom names + colors
-5. **Filters** — Era + Mood chips selected
-6. **Hints overlay** — Hints panel open showing 5 hint options with point costs
-7. **Buzzed-in** — A team buzzed, Correct/Wrong overlay visible
-8. **Reveal** — Song revealed, movie name + points scored
+Resized PNG/JPEG files live in `marketing/screenshots/resized/`.
+
+1. **01-playing-hero** — Round 1/5 Playing screen (M vs S teams, 28s timer)
+2. **02-buzzed-answer** — Buzzed overlay, "Correct / Wrong / Cancel"
+3. **03-reveal-scoring** — Reveal screen (Choomantar) with Apple Music link
+   and "Wrong song played? Report it" buttons — showcases v1.2 features
+4. **04-login** — Login screen with **"Skip · Play as guest"** visible
+   *(critical — proves 5.1.1 fix at a glance for the next reviewer)*
+5. **05-home** — Home screen, "antakshari" callout
+6. **07-filters** — Filters screen, era + mood + timer + difficulty
+7. **08-settings** — Settings screen (Player not signed in, v1.2.0,
+   "Change music source" → leads into Apple Music story)
+8. Optionally **09-splash** if you have 8+ slots remaining
 
 ---
 
@@ -291,17 +348,24 @@ Sanity check: does the icon work at 60×60 in a row of 30 other app icons? If no
 
 ---
 
-## Final pre-submission checklist
+## Final pre-submission checklist (v1.2.1 resubmit)
 
-- [ ] Build #6 uploaded to TestFlight, installed, all 3 auth flows tested
-- [ ] All metadata above copy/pasted into App Store Connect
-- [ ] 6.7" iPhone screenshots uploaded (3-10 images)
-- [ ] 6.5" iPhone screenshots uploaded (3-10 images)
-- [ ] Privacy nutrition labels completed
-- [ ] Review notes filled in
-- [ ] Demo account note (or "use Apple Sign In") in review notes
-- [ ] `supportsTablet: false` in app.json IF skipping iPad (or build iPad screenshots)
-- [ ] Export compliance answered (no custom crypto = simple yes/no)
-- [ ] Pricing + availability selected
-- [ ] App icon final
-- [ ] Submit for App Review
+Before submitting:
+
+- [ ] Supabase RPC `delete_my_account()` created and granted to `authenticated`
+- [ ] Build #20 uploaded to TestFlight + tested guest mode + tested Delete account on physical device
+- [ ] Build #20 selected in App Store Connect → Build section
+- [ ] **Privacy nutrition labels updated** to add Diagnostics (Sentry) + Usage Data (PostHog) — the v1.0 labels were incomplete
+- [ ] **Privacy Policy URL** still resolves: https://abhi0803.github.io/Bollywood/privacy
+- [ ] **Review Notes** field has the new 5.1.1(v) + 5.2.3 text from this doc
+- [ ] **Demo Account** field updated to mention guest mode + Delete account flow
+- [ ] **Screenshots** updated to v1.2.1 versions (esp. 04-login showing "Skip · Play as guest")
+- [ ] What's New field filled in: "Skip sign-in to play as guest. Apple Music subscribers can now play full songs. Delete account anytime from Settings."
+- [ ] Export compliance: `ITSAppUsesNonExemptEncryption: false` already in app.json
+- [ ] Pricing + availability unchanged from v1.0 (free, all countries)
+- [ ] App icon unchanged
+- [ ] Resubmit for App Review
+
+After submitting, reply on the rejection thread saying you've addressed
+both 5.1.1(v) (in-app delete) and 5.2.3 (review notes now contain the
+documentary chain — iTunes Search API URL, MusicKit docs, App ID capability).
