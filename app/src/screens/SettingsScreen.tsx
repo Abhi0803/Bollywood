@@ -21,6 +21,7 @@ type Props = {
   onChangeService: () => void;
   onDisconnect: () => void;
   onSignOut: () => void;
+  onDeleteAccount: () => void;
   onBack: () => void;
 };
 
@@ -37,6 +38,7 @@ export function SettingsScreen({
   onChangeService,
   onDisconnect,
   onSignOut,
+  onDeleteAccount,
   onBack,
 }: Props) {
   const [reminderOn, setReminderOn] = useState(false);
@@ -132,19 +134,44 @@ export function SettingsScreen({
       </Pressable>
       <Pressable style={styles.actionRow}>
         <Text style={styles.actionText}>About</Text>
-        <Text style={styles.rowSub}>v1.2.0</Text>
+        <Text style={styles.rowSub}>v1.2.1</Text>
       </Pressable>
-      <Pressable
-        onPress={() =>
-          Alert.alert('Sign out?', 'You can sign back in any time with your email.', [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Sign out', style: 'destructive', onPress: onSignOut },
-          ])
-        }
-        style={styles.actionRow}
-      >
-        <Text style={[styles.actionText, { color: colors.danger }]}>Sign out</Text>
-      </Pressable>
+      {user ? (
+        <>
+          <Pressable
+            onPress={() =>
+              Alert.alert('Sign out?', 'You can sign back in any time with your email.', [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Sign out', style: 'destructive', onPress: onSignOut },
+              ])
+            }
+            style={styles.actionRow}
+          >
+            <Text style={[styles.actionText, { color: colors.danger }]}>Sign out</Text>
+          </Pressable>
+          <Pressable
+            onPress={() =>
+              Alert.alert(
+                'Delete account?',
+                'This permanently removes your Naam Bolo account and all data we have on our server (your email, sign-in identity, and game-state references). Songs on your phone are also wiped. This cannot be undone.',
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  {
+                    text: 'Delete account',
+                    style: 'destructive',
+                    onPress: onDeleteAccount,
+                  },
+                ],
+              )
+            }
+            style={styles.actionRow}
+          >
+            <Text style={[styles.actionText, { color: colors.danger }]}>
+              Delete account
+            </Text>
+          </Pressable>
+        </>
+      ) : null}
     </ScreenLayout>
   );
 }

@@ -2,7 +2,7 @@ import { Component, useEffect, type ReactNode } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import * as Linking from 'expo-linking';
 import * as SplashScreen from 'expo-splash-screen';
-import { SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import {
   PostHogProvider,
@@ -16,7 +16,11 @@ import { useAppleMusic } from './src/state/useAppleMusic';
 import { useAuthSession } from './src/state/useAuthSession';
 import { useGameAudio } from './src/state/useGameAudio';
 import { useGameState } from './src/state/useGameState';
-import { createSessionFromUrl, signOut as supabaseSignOut } from './src/state/auth';
+import {
+  createSessionFromUrl,
+  deleteAccount as supabaseDeleteAccount,
+  signOut as supabaseSignOut,
+} from './src/state/auth';
 
 // Initialize Sentry as the very first thing — before any other module
 // has a chance to throw — so the first crash on app load is captured.
@@ -251,6 +255,22 @@ function AppInner() {
             onDisconnect={() => a.setService(null)}
             onSignOut={async () => {
               await supabaseSignOut();
+              a.signOut();
+            }}
+            onDeleteAccount={async () => {
+              const result = await supabaseDeleteAccount();
+              if (!result.ok) {
+                reportError(new Error(result.error ?? 'delete_account_failed'), {
+                  source: 'SettingsScreen.deleteAccount',
+                });
+                Alert.alert(
+                  'Could not delete account',
+                  result.error ??
+                    'Something went wrong. Please email jhaabhinav08@gmail.com and we will delete it for you within 24 hours.',
+                );
+                return;
+              }
+              track('account_deleted');
               a.signOut();
             }}
             onBack={() => a.go('home')}

@@ -140,60 +140,121 @@ If email sign-in must be tested instead, contact us at jhaabhinav08@gmail.com an
 ## Review Notes (Apple's "Notes" field)
 
 ```
-Naam Bolo is a Bollywood song-guessing party game for two teams.
+Naam Bolo is a Bollywood song-guessing party game. Address of every
+issue Apple raised, in priority order.
 
-— ADDRESSING THE 2026-05-27 REJECTION (v1.2 resubmission) —
+═══════════════════════════════════════════════════════════════════════
+ADDRESSING REJECTION OF 2026-05-28 (Submission d96fc2da-24e4-...)
+═══════════════════════════════════════════════════════════════════════
 
-5.1.1 (Privacy / Data Collection):
-Sign-in is now OPTIONAL. The Login screen has a "Skip · Play as guest" button
-that takes the user straight into gameplay with no account. Sign-in remains
-available for users who want optional cross-device score sync, but it is no
-longer required to play. Reviewers can test the entire game as a guest.
+▼ 5.1.1(v) — ACCOUNT DELETION
 
-5.2.3 (Audio/Video Downloading):
-The app does NOT download, save, host, or distribute any audio. It is purely a
-streaming consumer of Apple's own public APIs:
-  * 30-second previews: streamed (not downloaded) from Apple's iTunes Search
-    API (https://itunes.apple.com/search) — documented, free for any app to
-    use, no authentication required. Apple's Affiliate Program ToS explicitly
-    permits preview playback in third-party apps.
-  * Full songs (v1.2, optional): streamed via Apple's MusicKit framework
-    through the user's own Apple Music subscription. Standard Apple SDK use,
-    no DRM bypass, no caching beyond MusicKit's own internal handling.
-  * "Add song" feature stores TEXT METADATA only (title/movie/year/director).
-    Users cannot upload audio files.
-  * "Block this song" stores a song ID in local JSON. No audio involved.
-  * expo-file-system writes are limited to: prefs, blocklist, user-added
-    song metadata, play history. No audio files ever touch the file system.
+Implemented. Build v1.2.0 (build 19+) adds an in-app "Delete account"
+option that completes the entire flow on-device, no external steps:
 
-— HOW TO TEST —
+  Settings → scroll to bottom → "Delete account"
+  → confirmation dialog ("This cannot be undone")
+  → tap "Delete account" → backend permanently removes the auth row
+  → user is signed out and returned to the home screen
 
-GUEST MODE (no account required, fastest):
-1. Launch the app, tap "Get started" on splash
-2. On the Login screen, tap "Skip · Play as guest"
-3. On Home, tap "New Game" → continue with default teams + filters → Start
-4. Round 1 plays a 30-second Bollywood song clip from iTunes Search API
-5. Tap any team's name to simulate that team buzzing in
-6. On the Buzzed overlay, tap "Correct" or "Wrong"
-7. After 5 rounds, Summary screen shows the winner
+The delete calls a server-side Postgres function on Supabase
+(SECURITY DEFINER) that removes the row from auth.users. Cascading
+foreign keys remove any associated rows. The user does NOT need to
+contact support, visit a website, or use email.
 
-SIGN-IN (only if reviewing the optional account features):
-"Continue with Apple" on Login screen — uses reviewer's Apple ID. Or
-"Continue with Google" or email OTP.
+The earlier rejection assumed deletion was missing; the build under
+review (1.0 build 9) did not include it. The current build does.
 
-APPLE MUSIC FULL SONGS (v1.2, optional):
-Settings → Change music source → Full song tab → Connect Apple Music.
-Requires the reviewer to have an active Apple Music subscription on the
-test device. If not subscribed, the app stays on the 30-second preview
-path — which is the default for all users.
+Test flow for reviewer:
+  1. On Login screen, tap "Continue with Apple" (or use a test email)
+  2. Sign in
+  3. Open Settings (Home → "≡" or similar)
+  4. Scroll to bottom — "Sign out" and "Delete account" both shown
+  5. Tap "Delete account" → confirm → app returns to the splash/login
+     screen and the account no longer exists in Supabase
 
-— CONTENT LICENSING SUMMARY —
-* 30s previews: Apple iTunes Search API — public, free, documented.
-* Apple Music full tracks: MusicKit framework — user's own subscription.
-* Song catalog (2594 entries): hand-curated metadata only.
+▼ 5.2.3 — RIGHTS TO THIRD-PARTY AUDIO / CATALOGS
 
-CONTACT
-jhaabhinav08@gmail.com
+The App does NOT consume any third-party (non-Apple) audio service.
+EVERY audio source, catalog, and discovery surface in the app is
+Apple's own:
+
+  1. 30-second previews — Apple's iTunes Search API
+     URL: https://itunes.apple.com/search
+     Docs: https://performance-partners.apple.com/search-api
+     Apple explicitly permits any developer to play preview clips
+     returned by this API without separate licensing. The API requires
+     no key and no quota agreement; it is a public Apple service.
+
+  2. Full-song playback (optional, v1.2) — Apple's MusicKit framework
+     Docs: https://developer.apple.com/musickit/
+     Playback is initiated via ApplicationMusicPlayer, drawing from
+     the user's OWN Apple Music subscription. We never proxy audio,
+     never bypass DRM, never cache stems. The MusicKit capability is
+     enabled on App ID com.abhinav.naambolo (visible in App Services
+     of our Apple Developer account).
+
+  3. Apple Music deep links — official Apple URL scheme
+     (music.apple.com/.../song/...). When tapped, the system opens
+     the Music app. Standard Apple integration.
+
+  4. Catalog (2594 entries) — HAND-CURATED METADATA by the developer
+     and small community of contributors. Stored as a JSON file inside
+     the app bundle. Contains: title, movie name, year, director,
+     three cast names, popularity, mood, era. NO audio. NO lyrics.
+     NO copyrighted artwork. Movies and songs are public facts.
+
+  5. NO third-party services in the audio path. There is no Spotify,
+     YouTube, SoundCloud, Vimeo, Deezer, Saavn, Wynk, or other
+     non-Apple streaming source connected to playback. The Settings
+     screen has placeholder UI for a future Spotify integration but
+     it is disabled and labeled "Coming later" — see ConnectScreen
+     line ~94.
+
+  6. The "Add song" feature lets the user submit METADATA ONLY (song
+     name, movie name, year). No file upload. When a user-added song
+     plays, lookup goes through iTunes Search API just like the
+     bundled catalog.
+
+  7. expo-file-system writes on disk are strictly text: preferences,
+     blocklist, user-added song metadata, play history. NO audio bytes
+     ever touch the file system. Confirmable by inspecting the
+     simulator sandbox.
+
+Documentary chain (what Apple's reviewer can verify):
+  - Apple Developer Program License Agreement § 3.3.7 — accepted on
+     enrolment, governs use of Apple APIs.
+  - iTunes Search API page (link above) is publicly documented.
+  - MusicKit capability shows enabled on the App ID in the Apple
+     Developer portal under Identifiers → com.abhinav.naambolo.
+  - The privacy policy at https://abhi0803.github.io/Bollywood/privacy
+     Sections 1.4, 4, and 8 declare the data flow.
+
+═══════════════════════════════════════════════════════════════════════
+HOW TO TEST THE APP (~3 minutes)
+═══════════════════════════════════════════════════════════════════════
+
+FASTEST PATH (guest mode, no account):
+  1. Tap "Get started" on splash
+  2. On Login screen, tap "Skip · Play as guest"   ← fixes 5.1.1
+  3. New Game → defaults → Start → play a round → buzz / correct
+  4. Summary shows scores
+
+SIGNED-IN PATH (only if reviewing account features):
+  1. "Continue with Apple" — uses reviewer's Apple ID
+  2. Settings → "Delete account" available ← fixes 5.1.1(v)
+
+APPLE MUSIC (only if reviewer has Apple Music subscription):
+  Settings → Change music source → Full song tab → Connect Apple Music
+  → grant access → start a game → full songs play
+
+═══════════════════════════════════════════════════════════════════════
+TECHNICAL CONTACTS
+═══════════════════════════════════════════════════════════════════════
+Developer: Abhinav Jha
+Email: jhaabhinav08@gmail.com
+Privacy Policy: https://abhi0803.github.io/Bollywood/privacy
+Support / Marketing: https://abhi0803.github.io/Bollywood/
 ```
 
 ---

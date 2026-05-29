@@ -84,6 +84,32 @@ export async function signOut(): Promise<AuthResult> {
   return { ok: true };
 }
 
+// Permanently delete the signed-in user from Supabase. The actual deletion
+// is performed server-side by a Postgres function `delete_my_account()`
+// (defined with SECURITY DEFINER) so the client never needs the service-
+// role key. After the user row is removed, we also sign out locally so the
+// app state matches.
+//
+// Setup required on Supabase (run once in SQL editor):
+//   create or replace function public.delete_my_account()
+//   returns void
+//   language plpgsql
+//   security definer
+//   set search_path = public
+//   as $$
+//   begin
+//     delete from auth.users where id = auth.uid();
+//   end;
+//   $$;
+//   grant execute on function public.delete_my_account() to authenticated;
+export async function deleteAccount(): Promise<AuthResult> {
+  const { error: rpcError } = await supabase.rpc('delete_my_account');
+  if (rpcError) return { ok: false, error: rpcError.message };
+  // The user row is gone; sign out to clear the local session.
+  await supabase.auth.signOut().catch(() => {});
+  return { ok: true };
+}
+
 // Google OAuth flow that works inside Expo Go.
 //
 // Why this dance:
