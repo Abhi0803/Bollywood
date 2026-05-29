@@ -189,124 +189,87 @@ Email OTP test account available on request — email jhaabhinav08@gmail.com.
 
 ---
 
-## Review Notes (Apple's "Notes" field)
+## Review Notes (Apple's "Notes" field — 4000 char limit)
+
+Compressed to ~3700 chars. ASCII-only (no box-drawing characters) so
+the character counter in ASC doesn't double-count any glyphs.
 
 ```
-Naam Bolo is a Bollywood song-guessing party game. Address of every
-issue Apple raised, in priority order.
+Naam Bolo is a Bollywood song-guessing party game.
 
-═══════════════════════════════════════════════════════════════════════
-ADDRESSING REJECTION OF 2026-05-28 (Submission d96fc2da-24e4-...)
-═══════════════════════════════════════════════════════════════════════
+Addresses rejection 2026-05-28 (sub d96fc2da). Both issues fixed
+in v1.2.1 build 20.
 
-▼ 5.1.1(v) — ACCOUNT DELETION
+5.1.1(v) ACCOUNT DELETION — FIXED
 
-Implemented. Build v1.2.0 (build 19+) adds an in-app "Delete account"
-option that completes the entire flow on-device, no external steps:
+In-app: Settings -> "Delete account" -> confirm -> Supabase
+SECURITY DEFINER RPC removes the auth row -> user signed out.
+No website, no email, no support request needed.
 
-  Settings → scroll to bottom → "Delete account"
-  → confirmation dialog ("This cannot be undone")
-  → tap "Delete account" → backend permanently removes the auth row
-  → user is signed out and returned to the home screen
+Test: Login -> "Continue with Apple" -> Settings -> scroll ->
+"Delete account" -> confirm. Account is gone from our database.
 
-The delete calls a server-side Postgres function on Supabase
-(SECURITY DEFINER) that removes the row from auth.users. Cascading
-foreign keys remove any associated rows. The user does NOT need to
-contact support, visit a website, or use email.
+The 1.0 (9) build under review did not include this; v1.2.1
+build 20 does.
 
-The earlier rejection assumed deletion was missing; the build under
-review (1.0 build 9) did not include it. The current build does.
+5.2.3 THIRD-PARTY AUDIO — NO THIRD-PARTY AUDIO
 
-Test flow for reviewer:
-  1. On Login screen, tap "Continue with Apple" (or use a test email)
-  2. Sign in
-  3. Open Settings (Home → "≡" or similar)
-  4. Scroll to bottom — "Sign out" and "Delete account" both shown
-  5. Tap "Delete account" → confirm → app returns to the splash/login
-     screen and the account no longer exists in Supabase
+Every audio source is Apple-owned:
 
-▼ 5.2.3 — RIGHTS TO THIRD-PARTY AUDIO / CATALOGS
+1. 30s previews: Apple iTunes Search API
+   https://itunes.apple.com/search — Apple's free public API.
+   Apple's Affiliate Program ToS permits preview playback by
+   any app with no separate license.
 
-The App does NOT consume any third-party (non-Apple) audio service.
-EVERY audio source, catalog, and discovery surface in the app is
-Apple's own:
+2. Full songs (optional, v1.2): Apple MusicKit framework
+   https://developer.apple.com/musickit/
+   Plays via ApplicationMusicPlayer using the user's OWN Apple
+   Music subscription. No proxy, no DRM bypass, no caching.
+   MusicKit capability enabled on App ID com.abhinav.naambolo.
 
-  1. 30-second previews — Apple's iTunes Search API
-     URL: https://itunes.apple.com/search
-     Docs: https://performance-partners.apple.com/search-api
-     Apple explicitly permits any developer to play preview clips
-     returned by this API without separate licensing. The API requires
-     no key and no quota agreement; it is a public Apple service.
+3. Apple Music deep links — standard music.apple.com URLs.
 
-  2. Full-song playback (optional, v1.2) — Apple's MusicKit framework
-     Docs: https://developer.apple.com/musickit/
-     Playback is initiated via ApplicationMusicPlayer, drawing from
-     the user's OWN Apple Music subscription. We never proxy audio,
-     never bypass DRM, never cache stems. The MusicKit capability is
-     enabled on App ID com.abhinav.naambolo (visible in App Services
-     of our Apple Developer account).
+4. Catalog (2594 entries): HAND-CURATED METADATA only — title,
+   movie, year, director, cast. JSON in bundle. NO audio,
+   NO lyrics, NO copyrighted artwork.
 
-  3. Apple Music deep links — official Apple URL scheme
-     (music.apple.com/.../song/...). When tapped, the system opens
-     the Music app. Standard Apple integration.
+5. NO Spotify / YouTube / SoundCloud / Saavn / Wynk / Deezer /
+   any non-Apple streaming. A disabled Spotify placeholder
+   labeled "Coming later" appears in Settings — no traffic.
 
-  4. Catalog (2594 entries) — HAND-CURATED METADATA by the developer
-     and small community of contributors. Stored as a JSON file inside
-     the app bundle. Contains: title, movie name, year, director,
-     three cast names, popularity, mood, era. NO audio. NO lyrics.
-     NO copyrighted artwork. Movies and songs are public facts.
+6. "Add song" submits metadata only (name/movie/year). No file
+   upload. Lookup via iTunes Search API.
 
-  5. NO third-party services in the audio path. There is no Spotify,
-     YouTube, SoundCloud, Vimeo, Deezer, Saavn, Wynk, or other
-     non-Apple streaming source connected to playback. The Settings
-     screen has placeholder UI for a future Spotify integration but
-     it is disabled and labeled "Coming later" — see ConnectScreen
-     line ~94.
+7. Local file writes are TEXT ONLY: prefs, blocklist, added-song
+   metadata, history. No audio bytes ever touch disk.
 
-  6. The "Add song" feature lets the user submit METADATA ONLY (song
-     name, movie name, year). No file upload. When a user-added song
-     plays, lookup goes through iTunes Search API just like the
-     bundled catalog.
+Documentary chain Apple reviewer can verify:
+ - Apple Developer Program License Agreement (accepted on
+   enrolment) governs Apple API use.
+ - iTunes Search API publicly documented at URL above.
+ - MusicKit capability enabled on com.abhinav.naambolo in
+   developer portal Identifiers section.
+ - Privacy Policy https://abhi0803.github.io/Bollywood/privacy
+   sections 1.4, 2, 4 declare the data flow.
 
-  7. expo-file-system writes on disk are strictly text: preferences,
-     blocklist, user-added song metadata, play history. NO audio bytes
-     ever touch the file system. Confirmable by inspecting the
-     simulator sandbox.
+HOW TO TEST (~3 min)
 
-Documentary chain (what Apple's reviewer can verify):
-  - Apple Developer Program License Agreement § 3.3.7 — accepted on
-     enrolment, governs use of Apple APIs.
-  - iTunes Search API page (link above) is publicly documented.
-  - MusicKit capability shows enabled on the App ID in the Apple
-     Developer portal under Identifiers → com.abhinav.naambolo.
-  - The privacy policy at https://abhi0803.github.io/Bollywood/privacy
-     Sections 1.4, 4, and 8 declare the data flow.
+Guest mode (no account):
+  Splash -> "Get started" -> Login -> "Skip · Play as guest"
+  -> New Game -> defaults -> Start -> buzz a team -> Summary.
 
-═══════════════════════════════════════════════════════════════════════
-HOW TO TEST THE APP (~3 minutes)
-═══════════════════════════════════════════════════════════════════════
+Signed-in (only for account features):
+  "Continue with Apple" — reviewer's Apple ID. Settings ->
+  "Delete account" works as above.
 
-FASTEST PATH (guest mode, no account):
-  1. Tap "Get started" on splash
-  2. On Login screen, tap "Skip · Play as guest"   ← fixes 5.1.1
-  3. New Game → defaults → Start → play a round → buzz / correct
-  4. Summary shows scores
+Apple Music (only if reviewer has subscription):
+  Settings -> Change music source -> Full song tab -> Connect
+  Apple Music -> grant access -> start game -> full songs play.
 
-SIGNED-IN PATH (only if reviewing account features):
-  1. "Continue with Apple" — uses reviewer's Apple ID
-  2. Settings → "Delete account" available ← fixes 5.1.1(v)
-
-APPLE MUSIC (only if reviewer has Apple Music subscription):
-  Settings → Change music source → Full song tab → Connect Apple Music
-  → grant access → start a game → full songs play
-
-═══════════════════════════════════════════════════════════════════════
-TECHNICAL CONTACTS
-═══════════════════════════════════════════════════════════════════════
-Developer: Abhinav Jha
-Email: jhaabhinav08@gmail.com
-Privacy Policy: https://abhi0803.github.io/Bollywood/privacy
-Support / Marketing: https://abhi0803.github.io/Bollywood/
+CONTACT
+Abhinav Jha · jhaabhinav08@gmail.com
+Privacy: https://abhi0803.github.io/Bollywood/privacy
+Support: https://abhi0803.github.io/Bollywood/
 ```
 
 ---
